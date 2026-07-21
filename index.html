@@ -1,0 +1,1800 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>JetSmart · Control Operacional +24H</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap');
+:root{
+  --jet:#0A2463;--jet-mid:#1B4FBF;--jet-light:#E8EFFE;--acc:#FFD60A;
+  --bg:#F0F3FA;--surf:#FFF;--surf2:#EEF1F8;--bdr:#D0D8EC;--bdr-s:#8FA0CC;
+  --txt:#0D1B3E;--txt-m:#3A4E7A;--txt-mu:#7A8DB5;
+  --ok:#1A7F4B;--ok-bg:#E3F5EC;--warn:#B45309;--warn-bg:#FEF3C7;
+  --err:#991B1B;--err-bg:#FEE2E2;--info:#1D4ED8;--info-bg:#DBEAFE;
+  --sw:220px;--hh:56px;--r:10px;--rl:13px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'IBM Plex Sans',sans-serif;background:var(--bg);color:var(--txt);display:flex;flex-direction:column;height:100vh;overflow:hidden}
+header{height:var(--hh);background:var(--jet);display:flex;align-items:center;padding:0 18px;gap:10px;z-index:100;flex-shrink:0}
+.logo{display:flex;align-items:center;gap:8px;color:#fff;font-size:16px;font-weight:600;white-space:nowrap}
+.logo-badge{background:var(--acc);color:var(--jet);font-size:10px;font-weight:700;padding:2px 7px;border-radius:20px}
+.h-center{flex:1;display:flex;align-items:center;justify-content:center;gap:8px}
+.h-title{color:rgba(255,255,255,.6);font-size:11px}
+.op-date{color:var(--acc);font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:500}
+.h-right{display:flex;align-items:center;gap:6px;flex-shrink:0}
+.btn-h{background:rgba(255,255,255,.1);color:#fff;border:1px solid rgba(255,255,255,.2);padding:5px 11px;border-radius:7px;font-size:11px;cursor:pointer;font-family:inherit;transition:background .12s;white-space:nowrap}
+.btn-h:hover{background:rgba(255,255,255,.18)}
+.btn-acc{background:var(--acc);color:var(--jet);border:none;padding:5px 14px;border-radius:7px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit}
+.btn-acc:hover{opacity:.85}
+.sync-badge{display:flex;align-items:center;gap:5px;padding:3px 10px;border-radius:20px;font-size:10px;font-weight:600;background:rgba(255,255,255,.12);color:#fff;white-space:nowrap}
+.sync-dot{width:7px;height:7px;border-radius:50%;background:var(--err);flex-shrink:0}
+.sync-dot.ok{background:var(--ok)}
+.sync-dot.spin{background:var(--acc);animation:pulse .7s infinite alternate}
+@keyframes pulse{from{opacity:1}to{opacity:.3}}
+.user-pill{display:flex;align-items:center;gap:6px;padding:4px 11px;border-radius:20px;background:rgba(255,255,255,.12);color:#fff;font-size:11px;cursor:pointer;white-space:nowrap}
+.user-pill:hover{background:rgba(255,255,255,.2)}
+.app-body{display:flex;flex:1;overflow:hidden}
+.online-wrap{background:var(--jet-light);border-bottom:1px solid var(--bdr);padding:4px 18px;font-size:11px;color:var(--txt-m);display:none;align-items:center;gap:6px;flex-shrink:0}
+.online-dot{width:7px;height:7px;border-radius:50%;background:var(--ok);display:inline-block}
+sidebar{width:var(--sw);background:var(--jet);display:flex;flex-direction:column;overflow-y:auto;flex-shrink:0;padding-bottom:16px}
+.sb-sect{padding:13px 12px 4px;font-size:9px;font-weight:700;letter-spacing:1.4px;color:rgba(255,255,255,.32);text-transform:uppercase}
+.nav-item{display:flex;align-items:center;gap:8px;padding:8px 12px;cursor:pointer;border-radius:8px;margin:1px 6px;color:rgba(255,255,255,.62);font-size:12px;transition:background .12s,color .12s;user-select:none}
+.nav-item:hover{background:rgba(255,255,255,.08);color:#fff}
+.nav-item.active{background:rgba(255,214,10,.14);color:var(--acc);font-weight:500}
+.nav-ico{font-size:14px;width:16px;text-align:center;flex-shrink:0}
+.atag{display:inline-flex;padding:1px 6px;border-radius:9px;font-size:9px;font-weight:600;margin-left:auto;white-space:nowrap}
+.atag.des{background:rgba(29,78,216,.3);color:#93C5FD}
+.atag.rol{background:rgba(124,58,237,.3);color:#C4B5FD}
+.atag.cco{background:rgba(5,150,105,.3);color:#6EE7B7}
+.atag.cpp{background:rgba(245,158,11,.3);color:#FCD34D}
+.atag.apt{background:rgba(220,38,38,.3);color:#FCA5A5}
+.atag.man{background:rgba(14,116,144,.3);color:#67E8F9}
+.sb-div{height:1px;background:rgba(255,255,255,.08);margin:5px 12px}
+main{flex:1;display:flex;flex-direction:column;overflow:hidden}
+.cscroll{flex:1;overflow-y:auto;padding:18px;display:flex;flex-direction:column;gap:16px}
+.card{background:var(--surf);border:1px solid var(--bdr);border-radius:var(--rl);overflow:visible}
+.card-hdr{display:flex;align-items:center;gap:10px;padding:11px 16px;border-bottom:1px solid var(--bdr);background:var(--surf2);border-radius:var(--rl) var(--rl) 0 0}
+.card-ico{width:28px;height:28px;border-radius:7px;background:var(--jet-light);display:flex;align-items:center;justify-content:center;font-size:14px;color:var(--jet-mid);flex-shrink:0}
+.card-title{font-size:13px;font-weight:600;color:var(--txt)}
+.card-sub{font-size:10.5px;color:var(--txt-mu);margin-top:1px}
+.card-body{padding:16px}
+.card-acts{margin-left:auto;display:flex;gap:6px;align-items:center}
+.pais-hdr{display:flex;align-items:center;gap:7px;font-size:12.5px;font-weight:600;color:var(--jet-mid);margin:16px 0 8px;padding-bottom:6px;border-bottom:2px solid var(--jet-light)}
+.pais-hdr:first-child{margin-top:0}
+.sub-sect{margin-bottom:18px;padding-bottom:18px;border-bottom:1px solid var(--bdr)}
+.sub-sect:last-child{margin-bottom:0;padding-bottom:0;border-bottom:none}
+.sub-title{font-size:12px;font-weight:600;color:var(--txt-m);margin-bottom:10px;display:flex;align-items:center;gap:6px}
+.sub-badge{display:inline-flex;padding:1px 8px;border-radius:9px;font-size:9.5px;font-weight:600}
+.sub-badge.warn{background:var(--warn-bg);color:var(--warn)}
+.sub-badge.err{background:var(--err-bg);color:var(--err)}
+.sub-badge.info{background:var(--info-bg);color:var(--info)}
+label{display:block;font-size:11px;font-weight:500;color:var(--txt-m);margin-bottom:3px}
+input[type=text],input[type=time],input[type=date],select,textarea{width:100%;padding:7px 10px;border:1px solid var(--bdr);border-radius:7px;font-size:12px;font-family:inherit;color:var(--txt);background:var(--surf);outline:none;transition:border-color .13s,box-shadow .13s}
+input:focus,select:focus,textarea:focus{border-color:var(--jet-mid);box-shadow:0 0 0 3px rgba(27,79,191,.1)}
+textarea{resize:vertical;min-height:70px}
+.mono{font-family:'IBM Plex Mono',monospace;font-size:11px}
+.frow{display:grid;gap:9px}
+.c2{grid-template-columns:1fr 1fr}
+.c3{grid-template-columns:1fr 1fr 1fr}
+.c4{grid-template-columns:1fr 1fr 1fr 1fr}
+.field{display:flex;flex-direction:column;gap:3px}
+.entry{border:1px solid var(--bdr);border-radius:var(--r);padding:12px;background:var(--bg);position:relative;margin-bottom:8px}
+.entry:last-child{margin-bottom:0}
+.erm{position:absolute;top:8px;right:8px;background:none;border:none;cursor:pointer;color:var(--txt-mu);font-size:16px;padding:1px 5px;border-radius:5px;line-height:1}
+.erm:hover{background:var(--err-bg);color:var(--err)}
+.btn-add{display:flex;align-items:center;gap:6px;padding:7px 13px;background:var(--jet-light);color:var(--jet-mid);border:1px dashed var(--bdr-s);border-radius:7px;cursor:pointer;font-size:11.5px;font-weight:500;font-family:inherit;width:100%;justify-content:center;transition:background .12s;margin-top:9px}
+.btn-add:hover{background:#d3e4ff}
+.sev-row{display:flex;gap:5px;flex-wrap:wrap}
+.sev-btn{padding:3px 10px;border-radius:20px;border:1px solid var(--bdr);font-size:10px;font-weight:600;cursor:pointer;background:var(--surf);color:var(--txt-mu);font-family:inherit;transition:all .11s}
+.sev-btn.al{background:var(--ok-bg);color:var(--ok);border-color:var(--ok)}
+.sev-btn.am{background:var(--warn-bg);color:var(--warn);border-color:var(--warn)}
+.sev-btn.ah{background:var(--err-bg);color:var(--err);border-color:var(--err)}
+.pzone{border:2px dashed var(--bdr);border-radius:var(--r);padding:28px;text-align:center;cursor:pointer;transition:border-color .13s,background .13s;background:var(--bg)}
+.pzone:hover,.pzone.drag{border-color:var(--jet-mid);background:var(--jet-light)}
+.pzone-ico{font-size:30px;color:var(--txt-mu);margin-bottom:8px}
+.pzone-txt{font-size:12px;color:var(--txt-mu);margin-bottom:3px}
+.pzone-hint{font-size:10.5px;color:var(--txt-mu)}
+.single-photo{border:2px dashed var(--bdr);border-radius:var(--r);cursor:pointer;transition:border-color .13s,background .13s;background:var(--bg);position:relative;overflow:hidden}
+.single-photo.has-img{border-style:solid;border-color:var(--bdr-s)}
+.single-photo .inner{padding:36px;text-align:center}
+.single-photo img{width:100%;display:block;max-height:480px;object-fit:contain}
+.single-photo:hover{border-color:var(--jet-mid);background:var(--jet-light)}
+.single-photo.has-img:hover{background:transparent}
+.sp-rm{position:absolute;top:8px;right:8px;background:rgba(0,0,0,.55);color:#fff;border:none;border-radius:6px;padding:4px 10px;font-size:11px;cursor:pointer;font-family:inherit}
+.tpa{border:1px solid var(--bdr);border-radius:var(--r);overflow:hidden}
+.tpa-bar{padding:6px 10px;background:var(--surf2);border-bottom:1px solid var(--bdr);display:flex;align-items:center;gap:6px;font-size:10.5px;color:var(--txt-mu)}
+.tpa-bar button{margin-left:auto;padding:3px 10px;font-size:10.5px;border:1px solid var(--bdr);border-radius:6px;cursor:pointer;background:var(--surf);font-family:inherit}
+.tpa-bar button:hover{background:var(--jet-light);border-color:var(--jet-mid)}
+.paste-raw{font-family:'IBM Plex Mono',monospace;font-size:10.5px;min-height:72px;padding:9px;width:100%;border:none;background:var(--bg);color:var(--txt);outline:none;resize:vertical}
+.t-wrap{overflow-x:auto;padding:8px}
+.t-wrap table{width:100%;border-collapse:collapse;font-size:10.5px;font-family:'IBM Plex Mono',monospace}
+.t-wrap th{background:var(--jet);color:#fff;padding:5px 8px;text-align:left;font-weight:500;font-size:9.5px;white-space:nowrap}
+.t-wrap td{padding:4px 8px;border-bottom:1px solid var(--bdr);vertical-align:middle}
+.t-wrap tr:last-child td{border-bottom:none}
+.t-wrap tr:nth-child(even) td{background:var(--bg)}
+.cpp-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.cpp-box{border:1px solid var(--bdr);border-radius:var(--r);padding:13px}
+.cpp-box-hdr{font-size:12px;font-weight:600;color:var(--jet);margin-bottom:9px;display:flex;align-items:center;gap:7px}
+.ds-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:16px}
+.ds-card{background:var(--surf2);border-radius:var(--r);padding:12px;text-align:center;border:1px solid var(--bdr)}
+.ds-num{font-size:24px;font-weight:700;color:var(--jet)}
+.ds-lbl{font-size:10px;color:var(--txt-mu);margin-top:2px}
+.cbk{display:inline-flex;align-items:center;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:600;margin:2px}
+.cbk-ok{background:var(--ok-bg);color:var(--ok)}
+.cbk-warn{background:var(--warn-bg);color:var(--warn)}
+.cbk-err{background:var(--err-bg);color:var(--err)}
+.cbk-info{background:var(--info-bg);color:var(--info)}
+.timeline{position:relative;padding-left:24px}
+.timeline::before{content:'';position:absolute;left:8px;top:0;bottom:0;width:2px;background:var(--bdr)}
+.tl-item{position:relative;margin-bottom:14px}
+.tl-dot{position:absolute;left:-20px;top:3px;width:13px;height:13px;border-radius:50%;border:2.5px solid var(--surf);background:var(--jet-mid)}
+.tl-dot.ok{background:var(--ok)}
+.tl-time{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--txt-mu);margin-bottom:2px}
+.tl-title{font-size:12.5px;font-weight:600;color:var(--txt);margin-bottom:1px}
+.tl-sub{font-size:11px;color:var(--txt-m)}
+.tl-badge{display:inline-flex;padding:1px 6px;border-radius:9px;font-size:9.5px;font-weight:600;margin-left:6px;vertical-align:middle}
+.tl-user{font-size:10px;color:var(--txt-mu);margin-top:2px;font-style:italic}
+.sbar{display:flex;align-items:center;gap:6px;padding:6px 16px;background:var(--surf);border-top:1px solid var(--bdr);font-size:11px;color:var(--txt-mu);flex-shrink:0}
+.sdot{width:6px;height:6px;border-radius:50%;background:var(--ok)}
+.toast{position:fixed;bottom:18px;right:18px;background:var(--jet);color:#fff;padding:10px 16px;border-radius:9px;font-size:12px;font-weight:500;opacity:0;transform:translateY(6px);transition:opacity .2s,transform .2s;z-index:999;pointer-events:none;max-width:300px}
+.toast.show{opacity:1;transform:translateY(0)}
+/* LOGIN / CONFIG OVERLAY */
+.overlay{position:fixed;inset:0;background:var(--jet);display:flex;align-items:center;justify-content:center;z-index:2000}
+.ov-box{background:var(--surf);border-radius:20px;padding:36px 40px;width:500px;max-width:95vw;box-shadow:0 20px 60px rgba(0,0,0,.4)}
+.ov-logo{font-size:22px;font-weight:700;color:var(--jet);margin-bottom:4px;display:flex;align-items:center;gap:10px}
+.ov-sub{font-size:12px;color:var(--txt-mu);margin-bottom:24px}
+.ov-h2{font-size:14px;font-weight:600;color:var(--txt);margin-bottom:14px}
+.ov-field{margin-bottom:12px}
+.ov-field label{font-size:11px;font-weight:600;color:var(--txt-m);margin-bottom:4px;display:block}
+.ov-field input,.ov-field select{width:100%;padding:9px 12px;border:1.5px solid var(--bdr);border-radius:8px;font-size:12.5px;font-family:inherit;outline:none;color:var(--txt)}
+.ov-field input:focus,.ov-field select:focus{border-color:var(--jet-mid)}
+.ov-btn{width:100%;padding:11px;background:var(--jet);color:#fff;border:none;border-radius:9px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;margin-top:8px}
+.ov-btn:hover{opacity:.88}
+.ov-err{background:var(--err-bg);color:var(--err);border-radius:7px;padding:8px 12px;font-size:11.5px;margin-bottom:12px;display:none;line-height:1.5}
+/* MODAL BORRAR */
+.mbg{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:500;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .2s}
+.mbg.open{opacity:1;pointer-events:all}
+.modal{background:var(--surf);border-radius:var(--rl);padding:26px;max-width:420px;width:90%;transform:scale(.96);transition:transform .2s}
+.mbg.open .modal{transform:scale(1)}
+.modal h2{font-size:15px;font-weight:600;margin-bottom:9px;color:var(--err)}
+.modal p{font-size:12.5px;color:var(--txt-m);line-height:1.6;margin-bottom:14px}
+.modal-btns{display:flex;gap:9px;justify-content:flex-end}
+.btn-cancel{padding:7px 16px;border:1px solid var(--bdr);border-radius:8px;cursor:pointer;font-family:inherit;font-size:12.5px;background:var(--surf);color:var(--txt-m)}
+.btn-cancel:hover{background:var(--bg)}
+.btn-danger{padding:7px 16px;background:var(--err);color:#fff;border:none;border-radius:8px;cursor:pointer;font-family:inherit;font-size:12.5px;font-weight:600}
+.modal-inp{width:100%;margin-bottom:12px;font-size:12.5px;padding:8px 11px;border:1.5px solid var(--bdr);border-radius:8px;font-family:inherit;outline:none}
+.modal-inp:focus{border-color:var(--err)}
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--bdr);border-radius:3px}
+
+/* ══════════════════════════════════════════
+   MOBILE RESPONSIVE
+   ══════════════════════════════════════════ */
+.mob-menu-btn{display:none;background:none;border:none;color:#fff;font-size:22px;cursor:pointer;padding:4px 6px;line-height:1;flex-shrink:0}
+.sidebar-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:199}
+.sidebar-overlay.open{display:block}
+
+@media(max-width:768px){
+  /* Header: hide non-essential buttons, keep date + save + menu */
+  .h-center{display:none}
+  .sync-badge{display:none}
+  .user-pill{max-width:110px;overflow:hidden;font-size:10px}
+  .btn-h{display:none}
+  .btn-h[onclick*='PDF']{display:flex}
+  .mob-hide{display:none!important}
+  .btn-acc{padding:5px 10px;font-size:11px}
+  .mob-menu-btn{display:flex}
+  header{padding:0 12px;gap:8px}
+
+  /* Date pill - show compact */
+  #op-date{width:110px;font-size:10px}
+
+  /* Sidebar: hidden by default, slides in */
+  sidebar{
+    position:fixed;left:-260px;top:0;bottom:0;z-index:200;
+    width:260px;transition:left .25s ease;
+    box-shadow:4px 0 20px rgba(0,0,0,.3);
+  }
+  sidebar.mob-open{left:0}
+
+  /* Main takes full width */
+  .app-body{flex-direction:column}
+  main{width:100%}
+
+  /* Content padding smaller */
+  .cscroll{padding:12px;gap:12px}
+  .card-body{padding:12px}
+  .card-hdr{padding:10px 12px}
+
+  /* Grids collapse to 1 col */
+  .c2,.c3,.c4{grid-template-columns:1fr}
+  .cpp-grid{grid-template-columns:1fr}
+
+  /* Entry padding */
+  .entry{padding:10px}
+
+  /* Online strip hidden on mobile */
+  .online-wrap{font-size:10px;padding:3px 12px}
+
+  /* Status bar */
+  .sbar{font-size:10px;padding:5px 12px}
+
+  /* Sub-title wrap */
+  .sub-title{flex-wrap:wrap;gap:4px}
+
+  /* Form inputs full width already, but increase touch targets */
+  input[type=text],input[type=time],input[type=date],select,textarea{
+    font-size:14px;padding:9px 11px
+  }
+  .btn-add{padding:10px;font-size:12px}
+
+  /* Overlay login box */
+  .ov-box{padding:24px 20px}
+
+  /* Resumen sections */
+  .ds-grid{grid-template-columns:1fr 1fr}
+
+  /* Mobile bottom nav for quick section switching */
+  .mob-bottom-nav{
+    display:flex;position:fixed;bottom:0;left:0;right:0;
+    background:var(--jet);z-index:150;border-top:1px solid rgba(255,255,255,.1);
+    overflow-x:auto;-webkit-overflow-scrolling:touch;
+  }
+  .mob-bottom-nav::-webkit-scrollbar{display:none}
+  .mob-nav-item{
+    display:flex;flex-direction:column;align-items:center;gap:2px;
+    padding:8px 14px;color:rgba(255,255,255,.6);cursor:pointer;
+    font-size:9px;white-space:nowrap;flex-shrink:0;
+    transition:color .12s,background .12s;
+  }
+  .mob-nav-item.active{color:var(--acc);background:rgba(255,214,10,.1)}
+  .mob-nav-item span:first-child{font-size:18px}
+  /* Push content above bottom nav */
+  .cscroll{padding-bottom:70px}
+  .sbar{padding-bottom:calc(6px + 56px)}
+}
+
+@media(min-width:769px){
+  .mob-menu-btn{display:none!important}
+  .mob-bottom-nav{display:none!important}
+}
+</style>
+</head>
+<body>
+
+<!-- ─── HEADER ─── -->
+<header>
+  <button class="mob-menu-btn" onclick="toggleSidebar()" aria-label="Menú">☰</button>
+  <div class="logo">✈ JetSmart <span class="logo-badge">OCC</span></div>
+  <div class="h-center">
+    <span class="h-title">Control Operacional</span>
+    <span class="op-date" id="op-date-disp" style="font-size:15px;font-weight:700;letter-spacing:.5px;background:rgba(255,214,10,.15);padding:3px 14px;border-radius:20px;border:1px solid rgba(255,214,10,.35)">+24H</span>
+  </div>
+  <div class="h-right">
+    <input type="date" id="op-date" style="width:130px;background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.2);color:#fff;font-size:11px">
+    <div class="sync-badge"><div class="sync-dot" id="sync-dot"></div><span id="sync-lbl" style="font-size:10px">Sin conexión</span></div>
+    <div class="user-pill" id="user-pill" onclick="showOverlay()">👤 Ingresar</div>
+    <button class="btn-h mob-hide" onclick="nav('inspeccion',null)">🔍 Inspección</button>
+    <button class="btn-h" onclick="exportResumenPDF()" style="white-space:nowrap">⬇ PDF</button>
+    <button class="btn-h mob-hide" style="color:#FCA5A5;border-color:rgba(252,165,165,.4)" onclick="openModal()">🗑 Formatear</button>
+    <button class="btn-acc" onclick="saveAll()">💾 Guardar</button>
+  </div>
+</header>
+
+<!-- ─── ONLINE STRIP ─── -->
+<div class="online-wrap" id="online-wrap">
+  <span class="online-dot"></span>
+  <span id="online-txt">Conectando...</span>
+  <span style="margin-left:auto;font-size:10px;color:var(--txt-mu)" id="last-sync-txt"></span>
+</div>
+
+<!-- ─── MAIN LAYOUT ─── -->
+<div class="sidebar-overlay" id="sidebar-overlay" onclick="toggleSidebar()"></div>
+<div class="app-body">
+<sidebar>
+  <div class="sb-sect">Secciones</div>
+  <div class="nav-item active" id="nav-notam" onclick="nav('notam',this)"><span class="nav-ico">⚠️</span> NOTAM <span class="atag des">Despacho</span></div>
+  <div class="nav-item" id="nav-meteo" onclick="nav('meteo',this)"><span class="nav-ico">🌤</span> Meteorología <span class="atag des">Despacho</span></div>
+  <div class="nav-item" id="nav-roles" onclick="nav('roles',this)"><span class="nav-ico">👤</span> Turnos <span class="atag rol">Roles</span></div>
+  <div class="nav-item" id="nav-cco" onclick="nav('cco',this)"><span class="nav-ico">✈️</span> Planif. CCO <span class="atag cco">CCO</span></div>
+  <div class="nav-item" id="nav-cpp" onclick="nav('cpp',this)"><span class="nav-ico">👥</span> CPP <span class="atag cpp">CPP</span></div>
+  <div class="nav-item" id="nav-apto" onclick="nav('apto',this)"><span class="nav-ico">🏢</span> Aeropuerto <span class="atag apt">Apto</span></div>
+  <div class="nav-item" id="nav-mant" onclick="nav('mant',this)"><span class="nav-ico">🔧</span> Mantenimiento <span class="atag man">Mant</span></div>
+  <div class="sb-div"></div>
+  <div class="nav-item" id="nav-resumen" onclick="nav('resumen',this)"><span class="nav-ico">📋</span> Resumen General</div>
+  <div class="nav-item" id="nav-inspeccion" onclick="nav('inspeccion',this)"><span class="nav-ico">🔍</span> Inspección</div>
+</sidebar>
+<main>
+  <div class="cscroll" id="content-area"></div>
+  <div class="sbar"><span class="sdot"></span><span>Última actualización: <span id="last-save">—</span></span></div>
+</main>
+</div>
+
+<!-- ─── LOGIN OVERLAY ─── -->
+<div class="overlay" id="overlay">
+  <div class="ov-box">
+    <div class="ov-logo">✈ JetSmart <span class="logo-badge">OCC</span></div>
+    <div class="ov-sub">Control Operacional +24H · Plataforma colaborativa</div>
+    <div class="ov-err" id="login-err" style="margin-bottom:14px"></div>
+    <div class="ov-field">
+      <label>Tu nombre</label>
+      <input type="text" id="login-name" placeholder="Ej: Carlos Rojas" autocomplete="name">
+    </div>
+    <div class="ov-field">
+      <label>Área responsable</label>
+      <select id="login-area">
+        <option value="">— Selecciona tu área —</option>
+        <option>Despacho</option>
+        <option>Roles</option>
+        <option>CCO</option>
+        <option>CPP</option>
+        <option>Aeropuerto</option>
+        <option>Mantenimiento</option>
+        <option>Supervisión</option>
+      </select>
+    </div>
+    <button class="ov-btn" onclick="doLogin()">Entrar →</button>
+  </div>
+</div>
+
+<!-- ─── MODAL FORMATEAR ─── -->
+<div class="mbg" id="modal-clear">
+  <div class="modal">
+    <h2>⚠️ Formatear toda la información</h2>
+    <p>Esta acción eliminará <strong>todos los datos</strong> de todas las áreas, incluyendo los datos en Supabase. No se puede deshacer.</p>
+    <p>Para confirmar escriba <strong>BORRAR</strong>:</p>
+    <input type="text" class="modal-inp" id="modal-ci" placeholder="Escriba BORRAR para confirmar">
+    <div class="modal-btns">
+      <button class="btn-cancel" onclick="closeModal()">Cancelar</button>
+      <button class="btn-danger" onclick="confirmClear()">Borrar todo</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ════════════════════════════════════════════════════════
+// CONSTANTES
+// ════════════════════════════════════════════════════════
+const PAISES=[
+  {code:'CHL',flag:'🇨🇱',name:'Chile'},{code:'ARG',flag:'🇦🇷',name:'Argentina'},
+  {code:'BRA',flag:'🇧🇷',name:'Brasil'},{code:'COL',flag:'🇨🇴',name:'Colombia'},
+  {code:'PER',flag:'🇵🇪',name:'Perú'},{code:'URY',flag:'🇺🇾',name:'Uruguay'},
+  {code:'BOL',flag:'🇧🇴',name:'Bolivia'},{code:'ECU',flag:'🇪🇨',name:'Ecuador'},
+  {code:'VEN',flag:'🇻🇪',name:'Venezuela'},{code:'PRY',flag:'🇵🇾',name:'Paraguay'},
+  {code:'MEX',flag:'🇲🇽',name:'México'},{code:'PAN',flag:'🇵🇦',name:'Panamá'},
+  {code:'DOM',flag:'🇩🇴',name:'Rep. Dominicana'},{code:'USA',flag:'🇺🇸',name:'Estados Unidos'}
+];
+const pflag=code=>(PAISES.find(p=>p.code===code)||{flag:'🌍'}).flag;
+const ctryLabel=code=>{const p=PAISES.find(x=>x.code===code);return p?`${p.flag} ${p.name}`:code;};
+
+function emptyStore(){
+  return{
+    notam:{entries:[],raw:''},
+    meteo:{vis:'',vto:'',torm:'',visGroups:[],vtoGroups:[],tormGroups:[]},
+    roles:{foto:null},
+    cco:{trasladosRaw:'',trasladosRend:'',chartersRaw:'',chartersRend:'',interchangeRaw:'',interchangeRend:'',cambioMat:'N/A',backups:[]},
+    cpp:{jat:'',jap:'',jes:'',jec:''},
+    apto:{ovbk:'',hotelLim:'',hotelCrit:'',simRaw:'',simRendered:'',simFoto:null},
+    mant:{riesgosRaw:'',riesgosRendered:'',riesgosText:'',riesgosFoto:null,diferidosRaw:'',diferidosRendered:'',diferidosText:'',diferidosFoto:null,slotsText:'',slotFoto:null}
+  };
+}
+
+// Migrates old store shapes to current shape — safe to run on any version
+function migrateStore(s){
+  // meteo: old shape had arrays, new shape has flat strings
+  if(!s.meteo) s.meteo={vis:'',vto:'',torm:''};
+  if(Array.isArray(s.meteo.visibilidad)){
+    // migrate old entries to text
+    if(!s.meteo.vis) s.meteo.vis=s.meteo.visibilidad.map(e=>e.texto||'').filter(Boolean).join('\n');
+    delete s.meteo.visibilidad;
+  }
+  if(Array.isArray(s.meteo.vientos)){
+    if(!s.meteo.vto) s.meteo.vto=s.meteo.vientos.map(e=>e.obs||e.texto||'').filter(Boolean).join('\n');
+    delete s.meteo.vientos;
+  }
+  if(Array.isArray(s.meteo.tormentas)){
+    if(!s.meteo.torm) s.meteo.torm=s.meteo.tormentas.map(e=>e.texto||'').filter(Boolean).join('\n');
+    delete s.meteo.tormentas;
+  }
+  if(s.meteo.vis===undefined) s.meteo.vis='';
+  if(s.meteo.vto===undefined) s.meteo.vto='';
+  if(s.meteo.torm===undefined) s.meteo.torm='';
+  if(!s.meteo.visGroups) s.meteo.visGroups=[];
+  if(!s.meteo.vtoGroups) s.meteo.vtoGroups=[];
+  if(!s.meteo.tormGroups) s.meteo.tormGroups=[];
+  // notam: ensure raw exists
+  if(!s.notam) s.notam={entries:[],raw:''};
+  if(!s.notam.raw) s.notam.raw='';
+  // apto: ensure simFoto exists
+  if(!s.apto) s.apto={ovbk:'',hotelLim:'',hotelCrit:'',simRaw:'',simRendered:'',simFoto:null};
+  if(s.apto.simFoto===undefined) s.apto.simFoto=null;
+  // mant new fields
+  if(!s.mant) s.mant={riesgosRaw:'',riesgosRendered:'',riesgosText:'',riesgosFoto:null,diferidosRaw:'',diferidosRendered:'',diferidosText:'',diferidosFoto:null,slotsText:'',slotFoto:null};
+  if(s.mant.riesgosText===undefined) s.mant.riesgosText='';
+  if(s.mant.riesgosFoto===undefined) s.mant.riesgosFoto=null;
+  if(s.mant.diferidosText===undefined) s.mant.diferidosText='';
+  if(s.mant.diferidosFoto===undefined) s.mant.diferidosFoto=null;
+  if(s.mant.slotsText===undefined) s.mant.slotsText='';
+  return s;
+}
+
+let store=emptyStore();
+let actLog=[];
+let CM='notam';
+let _user=null;          // {name, area}
+let _sbClient=null;      // supabase client
+let _realtimeSub=null;   // realtime subscription
+let _ignoreNext=false;
+let _typingTimer=null;   // debounce timer for autoSave
+let _isTyping=false;     // blocks realtime re-render while user types
+
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+
+// ════════════════════════════════════════════════════════
+// SUPABASE — credenciales configuradas internamente
+// ════════════════════════════════════════════════════════
+const SUPABASE_URL = 'https://puwyxmpdwkatumrbhgla.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_GnisVRvZJk2LFKq55yeKKw_V4dzEh8H';
+
+function initSupabase(){
+  _sbClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+  return true;
+}
+
+// ─── Pull data from Supabase ───
+async function pullData(){
+  if(!_sbClient) return;
+  setSyncState('spin','Cargando...');
+  const today=document.getElementById('op-date').value;
+  const{data,error}=await _sbClient.from('occ_data').select('*').eq('op_date',today).single();
+  if(error&&error.code!=='PGRST116'){
+    setSyncState('err','Error al cargar');
+    toast('Error Supabase: '+error.message,'warn');
+    return;
+  }
+  if(data&&data.payload){
+    const savedSim=store.apto&&store.apto.simFoto?store.apto.simFoto:localStorage.getItem('js_simFoto');
+    store=migrateStore(Object.assign(emptyStore(),data.payload));
+    if(!store.apto.simFoto&&savedSim) store.apto.simFoto=savedSim;
+    nav(CM,document.getElementById('nav-'+CM));
+  }
+  // Load activity log
+  const{data:logData}=await _sbClient.from('occ_log').select('*').eq('op_date',today).order('ts',{ascending:true});
+  if(logData) actLog=logData;
+  setSyncState('ok','Sincronizado · '+new Date().toLocaleTimeString('es-CL',{hour:'2-digit',minute:'2-digit'}));
+}
+
+// ─── Push data to Supabase ───
+async function pushData(area,detail){
+  if(!_sbClient) return;
+  const today=document.getElementById('op-date').value;
+  setSyncState('spin','Guardando...');
+  const{error}=await _sbClient.from('occ_data').upsert(
+    {op_date:today, payload:store, updated_at:new Date().toISOString()},
+    {onConflict:'op_date'}
+  );
+  if(error){setSyncState('err','Error al guardar');toast('Error: '+error.message,'warn');return;}
+  setSyncState('ok','Guardado · '+new Date().toLocaleTimeString('es-CL',{hour:'2-digit',minute:'2-digit'}));
+  // Log activity
+  if(area&&detail&&_user){
+    const entry={op_date:today,ts:new Date().toISOString(),area,module:CM,detail,user_name:_user.name,user_area:_user.area};
+    await _sbClient.from('occ_log').insert(entry);
+    actLog.push(entry);
+  }
+  document.getElementById('last-save').textContent=new Date().toLocaleTimeString('es-CL',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+}
+
+// ─── Realtime subscription ───
+function subscribeRealtime(){
+  if(!_sbClient||_realtimeSub) return;
+  const today=document.getElementById('op-date').value;
+  _realtimeSub=_sbClient.channel('occ-realtime')
+    .on('postgres_changes',{event:'UPDATE',schema:'public',table:'occ_data',filter:`op_date=eq.${today}`},
+      payload=>{
+        if(_ignoreNext){_ignoreNext=false;return;}
+        // Don't re-render while user is actively typing — queue for after
+        if(_isTyping){
+          setTimeout(()=>{
+            if(!_isTyping){
+              store=migrateStore(Object.assign(emptyStore(),payload.new.payload));
+              nav(CM,document.getElementById('nav-'+CM));
+            }
+          },2000);
+          return;
+        }
+        store=migrateStore(Object.assign(emptyStore(),payload.new.payload));
+        nav(CM,document.getElementById('nav-'+CM));
+        setSyncState('ok','Actualizado · '+new Date().toLocaleTimeString('es-CL',{hour:'2-digit',minute:'2-digit'}));
+        toast('✓ Datos actualizados por otro usuario');
+      })
+    .subscribe();
+}
+
+// ─── Presence (usuarios en línea) ───
+let _presenceCh=null;
+function startPresence(){
+  if(!_sbClient||!_user) return;
+  _presenceCh=_sbClient.channel('occ-presence');
+  _presenceCh
+    .on('presence','sync',()=>{
+      const state=_presenceCh.presenceState();
+      const users=Object.values(state).flat();
+      const txt=users.length===0?'Solo tú estás conectado'
+        :'En línea: '+users.map(u=>`${areaIcon(u.area)} ${u.name}`).join(' · ');
+      document.getElementById('online-txt').textContent=txt;
+    })
+    .subscribe(async status=>{
+      if(status==='SUBSCRIBED'){
+        await _presenceCh.track({name:_user.name,area:_user.area});
+      }
+    });
+  document.getElementById('online-wrap').style.display='flex';
+}
+
+function areaIcon(a){
+  return{Despacho:'🌤',Roles:'👤',CCO:'✈️',CPP:'👥',Aeropuerto:'🏢',Mantenimiento:'🔧','Supervisión':'👁'}[a]||'👤';
+}
+
+function setSyncState(state,msg){
+  const dot=document.getElementById('sync-dot');
+  const lbl=document.getElementById('sync-lbl');
+  if(dot){dot.className='sync-dot';if(state==='ok') dot.classList.add('ok');else if(state==='spin') dot.classList.add('spin');}
+  if(lbl) lbl.textContent=msg||'';
+  const lst=document.getElementById('last-sync-txt');
+  if(lst) lst.textContent=msg||'';
+}
+
+// ════════════════════════════════════════════════════════
+// autoSave & saveAll — único punto de escritura
+// ════════════════════════════════════════════════════════
+function autoSave(area,detail){
+  // Mark user as typing — blocks realtime re-renders
+  _isTyping=true;
+  clearTimeout(_typingTimer);
+
+  // Save to localStorage immediately as fallback
+  localStorage.setItem('js_occ_local',JSON.stringify(store));
+  if(store.apto&&store.apto.simFoto) localStorage.setItem('js_simFoto',store.apto.simFoto);
+  document.getElementById('last-save').textContent=new Date().toLocaleTimeString('es-CL',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+
+  // Debounce: push to Supabase 800ms after user stops typing
+  _typingTimer=setTimeout(()=>{
+    _isTyping=false;
+    if(_sbClient) pushData(area,detail||'Datos actualizados');
+  },800);
+}
+function saveAll(){
+  if(_sbClient) pushData('Manual','Guardado manual');
+  else{localStorage.setItem('js_occ_local',JSON.stringify(store));toast('Guardado localmente (sin conexión)');}
+  toast('✓ Guardado','ok');
+}
+
+// ════════════════════════════════════════════════════════
+// OVERLAY — Login
+// ════════════════════════════════════════════════════════
+function showOverlay(){document.getElementById('overlay').style.display='flex';}
+function hideOverlay(){document.getElementById('overlay').style.display='none';}
+
+function doLogin(){
+  const name=document.getElementById('login-name').value.trim();
+  const area=document.getElementById('login-area').value;
+  const err=document.getElementById('login-err');
+  if(!name){err.textContent='Ingresa tu nombre.';err.style.display='block';return;}
+  if(!area){err.textContent='Selecciona tu área.';err.style.display='block';return;}
+  err.style.display='none';
+  _user={name,area};
+  localStorage.setItem('js_lastuser',JSON.stringify(_user));
+  document.getElementById('user-pill').innerHTML=`${areaIcon(area)} ${name} <span style="opacity:.6;font-size:10px">· ${area}</span>`;
+  if(!_sbClient) initSupabase();
+  hideOverlay();
+  const today=new Date().toISOString().split('T')[0];
+  if(!document.getElementById('op-date').value) document.getElementById('op-date').value=today;
+  updateDateDisp();
+  pullData().then(()=>{
+    subscribeRealtime();
+    startPresence();
+    try{nav('notam',document.getElementById('nav-notam'));}
+    catch(e){console.error('Nav error:',e);toast('Error al cargar sección: '+e.message,'warn');}
+  });
+}
+
+// ════════════════════════════════════════════════════════
+// NAV
+// ════════════════════════════════════════════════════════
+function nav(mod,el){
+  CM=mod;
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  const t=el||document.getElementById('nav-'+mod);
+  if(t) t.classList.add('active');
+  document.getElementById('content-area').innerHTML='';
+  const R={notam:renderNOTAM,meteo:renderMeteo,roles:renderRoles,cco:renderCCO,cpp:renderCPP,apto:renderApto,mant:renderMant,resumen:renderResumen,inspeccion:renderInspeccion};
+  if(R[mod]){try{R[mod](document.getElementById('content-area'));}catch(e){console.error('Render error in '+mod,e);document.getElementById('content-area').innerHTML=`<div style="padding:24px;color:var(--err);font-size:13px">⚠️ Error al renderizar: ${e.message}</div>`;}}
+  // Sync mobile bottom nav
+  if(typeof syncMobNav==='function') syncMobNav(mod);
+  // Close sidebar on mobile after navigation
+  closeSidebar();
+}
+
+// ════════════════════════════════════════════════════════
+// HELPERS
+// ════════════════════════════════════════════════════════
+function mkCard(ico,title,sub,acts){
+  const c=document.createElement('div');c.className='card';
+  c.innerHTML=`<div class="card-hdr"><div class="card-ico">${ico}</div><div style="flex:1"><div class="card-title">${title}</div>${sub?`<div class="card-sub">${sub}</div>`:''}</div>${acts?`<div class="card-acts">${acts}</div>`:''}</div><div class="card-body"></div>`;
+  return c;
+}
+function paisHdr(code){
+  const p=PAISES.find(x=>x.code===code)||{flag:'🌍',name:code};
+  const d=document.createElement('div');d.className='pais-hdr';d.innerHTML=`${p.flag} ${p.name}`;return d;
+}
+
+// Severity — registry-based (no JSON in onclick)
+const _sevReg={};
+function sevRow(path,idx,current){
+  const uid='sv-'+path.join('_')+'_'+idx;
+  _sevReg[uid]={path,idx};
+  return `<div class="field"><label>Severidad</label><div class="sev-row" id="${uid}">
+    <button class="sev-btn ${current==='baja'?'al':''}" onclick="setSev('${uid}','baja',this)">🟢 Baja</button>
+    <button class="sev-btn ${current==='media'?'am':''}" onclick="setSev('${uid}','media',this)">🟡 Media</button>
+    <button class="sev-btn ${current==='alta'?'ah':''}" onclick="setSev('${uid}','alta',this)">🔴 Alta</button>
+  </div></div>`;
+}
+window.setSev=function(uid,val,btn){
+  const r=_sevReg[uid];if(!r)return;
+  let ref=store;r.path.slice(0,-1).forEach(k=>ref=ref[k]);
+  ref[r.path[r.path.length-1]][r.idx].sev=val;
+  btn.closest('.sev-row').querySelectorAll('.sev-btn').forEach(b=>b.classList.remove('al','am','ah'));
+  btn.classList.add({baja:'al',media:'am',alta:'ah'}[val]);
+  autoSave(CM);
+};
+
+// Single photo
+function singlePhoto(container,key,label,area){
+  const uid='sp-'+key.join('-');
+  const wrap=document.createElement('div');
+  const rend=()=>{
+    wrap.innerHTML='';
+    let ref=store;key.slice(0,-1).forEach(k=>ref=ref[k]);
+    const val=ref[key[key.length-1]];
+    const zone=document.createElement('div');
+    if(val){
+      zone.className='single-photo has-img';
+      const img=document.createElement('img');img.src=val;
+      const rmBtn=document.createElement('button');rmBtn.className='sp-rm';rmBtn.textContent='✕ Quitar';
+      rmBtn.onclick=()=>{let r=store;key.slice(0,-1).forEach(k=>r=r[k]);r[key[key.length-1]]=null;autoSave(area,'Imagen eliminada');rend();};
+      zone.appendChild(img);zone.appendChild(rmBtn);
+    } else {
+      zone.className='single-photo';
+      zone.innerHTML=`<div class="inner"><div class="pzone-ico">📷</div><div class="pzone-txt">${label||'Clic o arrastra para cargar'}</div><div class="pzone-hint">PNG · JPG · WEBP</div></div>`;
+      zone.onclick=()=>document.getElementById(uid).click();
+      zone.ondragover=e=>{e.preventDefault();zone.classList.add('drag');};
+      zone.ondragleave=()=>zone.classList.remove('drag');
+      zone.ondrop=e=>{e.preventDefault();zone.classList.remove('drag');const f=e.dataTransfer.files[0];if(f&&f.type.startsWith('image/'))readImg(f,key,area,rend);};
+    }
+    const inp=document.createElement('input');inp.type='file';inp.accept='image/*';inp.style.display='none';inp.id=uid;
+    inp.onchange=e=>{const f=e.target.files[0];if(f)readImg(f,key,area,rend);};
+    wrap.appendChild(zone);wrap.appendChild(inp);
+  };
+  rend();container.appendChild(wrap);
+}
+function readImg(file,key,area,cb){
+  const r=new FileReader();
+  r.onload=ev=>{let ref=store;key.slice(0,-1).forEach(k=>ref=ref[k]);ref[key[key.length-1]]=ev.target.result;autoSave(area,'Imagen cargada');cb();};
+  r.readAsDataURL(file);
+}
+
+// Paste table
+function pasteTable(container,rawKey,rendKey,area){
+  const rk=rawKey.split('.'),rrk=rendKey.split('.');
+  const uid='pt-'+rawKey.replace(/\./g,'-');
+  const get=p=>{let r=store;p.forEach(k=>r=r[k]);return r||'';};
+  const set=(p,v)=>{let r=store;p.slice(0,-1).forEach(k=>r=r[k]);r[p[p.length-1]]=v;};
+  const wrap=document.createElement('div');wrap.className='tpa';
+  wrap.innerHTML=`<div class="tpa-bar">📋 Pegue tabla Tab-separada (Excel / Power BI)<button onclick="doPaste('${uid}','${rawKey}','${rendKey}','${area}')">Procesar tabla</button></div>
+    <textarea class="paste-raw mono" id="${uid}" placeholder="Col1\tCol2\nVal1\tVal2">${esc(get(rk))}</textarea>
+    <div id="${uid}-rend" class="t-wrap" style="${get(rrk)?'':'display:none'}">${get(rrk)}</div>`;
+  container.appendChild(wrap);
+}
+window.doPaste=function(uid,rawKey,rendKey,area){
+  const raw=document.getElementById(uid).value.trim();
+  const set=(p,v)=>{let r=store;p=p.split('.');p.slice(0,-1).forEach(k=>r=r[k]);r[p[p.length-1]]=v;};
+  set(rawKey,raw);
+  if(!raw){toast('Ingrese datos primero','warn');return;}
+  const rows=raw.split('\n').map(r=>r.split('\t'));
+  let html='<table><thead><tr>'+rows[0].map(c=>`<th>${esc(c.trim())}</th>`).join('')+'</tr></thead><tbody>';
+  rows.slice(1).forEach(r=>{html+='<tr>'+r.map(c=>`<td>${esc(c.trim())}</td>`).join('')+'</tr>';});
+  html+='</tbody></table>';
+  set(rendKey,html);
+  document.getElementById(uid+'-rend').innerHTML=html;
+  document.getElementById(uid+'-rend').style.display='block';
+  autoSave(area,'Tabla procesada');toast('✓ Tabla procesada');
+};
+
+// ════════════════════════════════════════════════════════
+// NOTAM — texto libre con parser ICAO → agrupado por país
+// ════════════════════════════════════════════════════════
+
+// Mapa ICAO prefix → país
+const ICAO_COUNTRY={
+  SK:'Colombia',SB:'Brasil',SA:'Argentina',SP:'Perú',SC:'Chile',SU:'Uruguay',
+  SG:'Paraguay',SL:'Bolivia',SE:'Ecuador',SV:'El Salvador',MP:'Panamá',MR:'Costa Rica',
+  MK:'Jamaica',MN:'Nicaragua',MH:'Honduras',MM:'México',TJ:'Puerto Rico',
+  MD:'Rep. Dominicana',MY:'Bahamas',TF:'Martinica',LF:'Francia',EG:'Reino Unido',
+  LP:'Portugal',LE:'España',EB:'Bélgica',EH:'Países Bajos',ED:'Alemania'
+};
+const ICAO_FLAG={
+  SK:'🇨🇴',SB:'🇧🇷',SA:'🇦🇷',SP:'🇵🇪',SC:'🇨🇱',SU:'🇺🇾',SG:'🇵🇾',SL:'🇧🇴',SE:'🇪🇨',
+  MP:'🇵🇦',MR:'🇨🇷',MK:'🇯🇲',MM:'🇲🇽',TJ:'🇵🇷',MD:'🇩🇴',MY:'🇧🇸',
+  LP:'🇵🇹',LE:'🇪🇸',EB:'🇧🇪',EG:'🇬🇧',LF:'🇫🇷',ED:'🇩🇪'
+};
+
+function icaoToPais(code){
+  if(!code||code.length<2) return 'Otros';
+  const p2=code.slice(0,2).toUpperCase();
+  return ICAO_COUNTRY[p2]||'Otros';
+}
+function icaoToFlag(code){
+  if(!code||code.length<2) return '🌍';
+  return ICAO_FLAG[code.slice(0,2).toUpperCase()]||'🌍';
+}
+
+function parseNotamText(raw){
+  // Each line: ICAO - rest
+  const lines=raw.split('\n').map(l=>l.trim()).filter(Boolean);
+  return lines.map(line=>{
+    const m=line.match(/^([A-Z]{4})\s*[-–]\s*(.+)$/);
+    if(m) return {icao:m[1],detail:m[2]};
+    return {icao:'',detail:line};
+  });
+}
+
+function renderNOTAM(area){
+  const c=mkCard('⚠️','NOTAM Vigentes','Pegue la lista de NOTAMs — se agrupará automáticamente por país');
+  const body=c.querySelector('.card-body');
+
+  // Textarea for raw input
+  const inputSect=document.createElement('div');
+  inputSect.style.cssText='margin-bottom:16px';
+  inputSect.innerHTML=`
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
+      <label style="margin:0;font-size:11.5px;font-weight:600;color:var(--txt-m)">Pegar NOTAMs (formato: ICAO - detalle)</label>
+      <button onclick="parseAndRenderNotam()" style="margin-left:auto;padding:5px 14px;background:var(--jet);color:#fff;border:none;border-radius:7px;font-size:11.5px;font-weight:600;cursor:pointer;font-family:inherit">↻ Procesar</button>
+      <button onclick="clearNotamRaw()" style="padding:5px 10px;background:var(--bg);color:var(--txt-mu);border:1px solid var(--bdr);border-radius:7px;font-size:11px;cursor:pointer;font-family:inherit">Limpiar</button>
+    </div>
+    <textarea id="notam-raw" class="mono" style="width:100%;min-height:130px;resize:vertical;padding:10px;border:1px solid var(--bdr);border-radius:8px;font-size:11px;background:var(--bg);outline:none"
+      placeholder="SKCC - RWY 16/34 - 30 MAY–15 AGO 2026 - 0100-0500 UTC&#10;SKBO - RWY 14L/32R - 06 JUL–15 JUL 2026 - Diario 0500-1000 UTC&#10;SBGR - RWY 10R/28L - 15 JUL–03 OCT 2026 - Mié-Sáb 0330-0759 UTC&#10;SAEZ - RWY 11/29 - 12 y 14 JUL 2026 - 1130-2130 UTC"
+      oninput="_isTyping=true;store.notam.raw=this.value;autoSave('Despacho')">${esc(store.notam.raw||'')}</textarea>`;
+  body.appendChild(inputSect);
+
+  // Parsed result area
+  const resultDiv=document.createElement('div');
+  resultDiv.id='notam-parsed';
+  body.appendChild(resultDiv);
+
+  function renderParsed(){
+    resultDiv.innerHTML='';
+    const raw=store.notam.raw||'';
+    if(!raw.trim()) return;
+    const entries=parseNotamText(raw);
+    if(!entries.length) return;
+
+    // Group by country
+    const groups={};
+    entries.forEach(e=>{
+      const pais=icaoToPais(e.icao);
+      if(!groups[pais]) groups[pais]=[];
+      groups[pais].push(e);
+    });
+
+    // Country order
+    const order=['Chile','Argentina','Perú','Colombia','Brasil','Uruguay','Bolivia','Ecuador','Panamá','México','Rep. Dominicana','Otros'];
+    const sorted=Object.keys(groups).sort((a,b)=>{
+      const ia=order.indexOf(a); const ib=order.indexOf(b);
+      return (ia===-1?99:ia)-(ib===-1?99:ib);
+    });
+
+    sorted.forEach(pais=>{
+      const flag=icaoToFlag(groups[pais][0].icao);
+      const hdr=document.createElement('div');
+      hdr.style.cssText='display:flex;align-items:center;gap:7px;font-size:12.5px;font-weight:600;color:var(--jet-mid);margin:14px 0 7px;padding-bottom:6px;border-bottom:2px solid var(--jet-light)';
+      hdr.innerHTML=`${flag} ${pais}`;
+      resultDiv.appendChild(hdr);
+
+      groups[pais].forEach(e=>{
+        const row=document.createElement('div');
+        row.style.cssText='display:flex;align-items:baseline;gap:10px;padding:5px 0;border-bottom:1px solid var(--bdr);font-size:11.5px';
+        row.innerHTML=`<span class="mono" style="font-weight:700;color:var(--jet);flex-shrink:0;min-width:44px">${esc(e.icao||'')}</span>
+          <span style="color:var(--txt-m);line-height:1.5">${esc(e.detail)}</span>`;
+        resultDiv.appendChild(row);
+      });
+    });
+  }
+
+  renderParsed();
+  area.appendChild(c);
+
+  window.parseAndRenderNotam=function(){
+    store.notam.raw=document.getElementById('notam-raw').value;
+    autoSave('Despacho','NOTAMs procesados');
+    renderParsed();
+    toast('✓ NOTAMs agrupados por país');
+  };
+  window.clearNotamRaw=function(){
+    store.notam.raw='';
+    document.getElementById('notam-raw').value='';
+    autoSave('Despacho','NOTAMs limpiados');
+    resultDiv.innerHTML='';
+  };
+}
+
+// ════════════════════════════════════════════════════════
+// METEO — 3 categorías con Procesar → agrupa por país ICAO
+// ════════════════════════════════════════════════════════
+
+// Parse raw meteo text → groups by country (same logic as NOTAM)
+function parseMeteoText(raw){
+  if(!raw||!raw.trim()) return [];
+  const lines=raw.split('\n').map(l=>l.trim()).filter(Boolean);
+  const COUNTRY_ORDER=['Chile','Argentina','Perú','Colombia','Brasil','Uruguay','Bolivia','Ecuador','Panamá','México','Rep. Dominicana','Otros'];
+  const groups=[];
+  lines.forEach(line=>{
+    const m=line.match(/^([A-Z]{4})(?:\s|[-\/]|$)/);
+    const icao=m?m[1]:null;
+    const pais=icao?icaoToPais(icao):null;
+    if(pais&&groups.length&&groups[groups.length-1].pais===pais){
+      groups[groups.length-1].lines.push(line);
+    } else if(pais){
+      groups.push({icao,pais,flag:icaoToFlag(icao),lines:[line]});
+    } else {
+      if(groups.length) groups[groups.length-1].lines.push(line);
+      else groups.push({icao:'',pais:'General',flag:'🌍',lines:[line]});
+    }
+  });
+  // Sort by country order
+  groups.sort((a,b)=>{
+    const ia=COUNTRY_ORDER.indexOf(a.pais); const ib=COUNTRY_ORDER.indexOf(b.pais);
+    return (ia===-1?99:ia)-(ib===-1?99:ib);
+  });
+  return groups;
+}
+
+// Render parsed meteo groups into a container element
+function renderMeteoGroups(groups, container){
+  container.innerHTML='';
+  if(!groups.length){
+    container.innerHTML='<p style="font-size:11.5px;color:var(--txt-mu);padding:4px 0">Sin datos procesados.</p>';
+    return;
+  }
+  groups.forEach(g=>{
+    const blk=document.createElement('div');
+    blk.style.cssText='margin-bottom:9px;border:1px solid var(--bdr);border-radius:var(--r);overflow:hidden';
+    const hdr=document.createElement('div');
+    hdr.style.cssText='background:var(--jet-light);padding:6px 12px;font-size:12px;font-weight:600;color:var(--jet);border-bottom:1px solid var(--bdr)';
+    hdr.textContent=g.flag+' '+g.pais;
+    const bdy=document.createElement('div');bdy.style.cssText='padding:8px 12px';
+    g.lines.forEach(line=>{
+      const row=document.createElement('div');
+      row.style.cssText='font-size:11.5px;color:var(--txt-m);padding:3px 0;border-bottom:1px solid var(--surf2);line-height:1.5;display:flex;gap:9px;align-items:baseline';
+      const icaoM=line.match(/^([A-Z]{4})/);
+      if(icaoM){
+        const rest=line.slice(4).replace(/^\s*[-\/]\s*/,'');
+        row.innerHTML='<span class="mono" style="font-weight:700;color:var(--jet);flex-shrink:0;min-width:42px">'+esc(icaoM[1])+'</span><span>'+esc(rest)+'</span>';
+      } else {
+        row.innerHTML='<span>'+esc(line)+'</span>';
+      }
+      bdy.appendChild(row);
+    });
+    blk.appendChild(hdr);blk.appendChild(bdy);container.appendChild(blk);
+  });
+}
+
+// Store for processed meteo groups (persisted as JSON alongside raw text)
+function renderMeteo(area){
+  const c=mkCard('🌤','Meteorología','Visibilidad · Vientos · Tormentas — agrupado por país al procesar');
+  const body=c.querySelector('.card-body');
+
+  const cats=[
+    {key:'vis',  procKey:'visGroups', ico:'🌫', label:'Visibilidad',
+     ph:'SCEL / 08:00–13:00 LT · BR · reducción a 3000 m · impacto en secuenciación · banco AM\nSAWH / 18:00–06:00 LT · FZFG + techo bajo · reducción 0500 m · operaciones nocturnas'},
+    {key:'vto',  procKey:'vtoGroups', ico:'💨', label:'Vientos',
+     ph:'Sin observaciones relevantes\n— o —\nSCEL / 270°/35KT G55KT · viento cruzado · pista 17L'},
+    {key:'torm', procKey:'tormGroups', ico:'⛈', label:'Tormentas',
+     ph:'SKCL / 00:00–04:00 LT · TSRA + CB · reducción 7000 m · holding y desvíos\nSKPE / 19:00–23:00 LT · SHRA + TCU · impacto moderado · banco tarde'}
+  ];
+
+  cats.forEach(cat=>{
+    const s=document.createElement('div');s.className='sub-sect';
+
+    // Header row with title + buttons
+    const hrow=document.createElement('div');
+    hrow.style.cssText='display:flex;align-items:center;gap:8px;margin-bottom:9px';
+    hrow.innerHTML=`<div class="sub-title" style="margin-bottom:0">${cat.ico} ${cat.label}</div>`;
+    const btnProc=document.createElement('button');
+    btnProc.textContent='↻ Procesar';
+    btnProc.style.cssText='margin-left:auto;padding:4px 13px;background:var(--jet);color:#fff;border:none;border-radius:7px;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit';
+    const btnClear=document.createElement('button');
+    btnClear.textContent='✕ Limpiar';
+    btnClear.style.cssText='padding:4px 10px;background:var(--bg);color:var(--txt-mu);border:1px solid var(--bdr);border-radius:7px;font-size:11px;cursor:pointer;font-family:inherit';
+    hrow.appendChild(btnProc);hrow.appendChild(btnClear);s.appendChild(hrow);
+
+    // Textarea
+    const ta=document.createElement('textarea');
+    ta.style.cssText='width:100%;min-height:95px;resize:vertical;font-size:12px;line-height:1.6;margin-bottom:10px';
+    ta.placeholder=cat.ph;
+    ta.value=store.meteo[cat.key]||'';
+    ta.oninput=()=>{_isTyping=true;store.meteo[cat.key]=ta.value;autoSave('Despacho','Meteo '+cat.label);};
+    s.appendChild(ta);
+
+    // Parsed result container
+    const resultDiv=document.createElement('div');
+    // Render existing processed groups if any
+    const existing=store.meteo[cat.procKey];
+    if(existing&&existing.length) renderMeteoGroups(existing,resultDiv);
+    s.appendChild(resultDiv);
+
+    // Button handlers
+    btnProc.onclick=()=>{
+      const raw=ta.value;
+      store.meteo[cat.key]=raw;
+      const groups=parseMeteoText(raw);
+      store.meteo[cat.procKey]=groups;
+      autoSave('Despacho','Meteo '+cat.label+' procesado');
+      renderMeteoGroups(groups,resultDiv);
+      toast('✓ '+cat.label+' agrupado por país');
+    };
+    btnClear.onclick=()=>{
+      ta.value='';
+      store.meteo[cat.key]='';
+      store.meteo[cat.procKey]=[];
+      autoSave('Despacho','Meteo '+cat.label+' limpiado');
+      resultDiv.innerHTML='';
+      toast(cat.label+' limpiado');
+    };
+
+    body.appendChild(s);
+  });
+
+  area.appendChild(c);
+}
+
+// ════════════════════════════════════════════════════════
+// TURNOS
+// ════════════════════════════════════════════════════════
+function renderRoles(area){
+  const c=mkCard('👤','Disponibilidad de Turnos','Imagen del cuadro de disponibilidad de turnos');
+  const body=c.querySelector('.card-body');
+  body.innerHTML=`<p style="font-size:11.5px;color:var(--txt-mu);margin-bottom:14px">Sube o arrastra la imagen generada por el sistema de Roles.</p>`;
+  singlePhoto(body,['roles','foto'],'Arrastra o haz clic para cargar la imagen de turnos','Roles');
+  area.appendChild(c);
+}
+
+// ════════════════════════════════════════════════════════
+// CCO
+// ════════════════════════════════════════════════════════
+function renderCCO(area){
+  const c=mkCard('✈️','Planificación CCO','Traslados · Charters · Interchange · Material · Backup');
+  const body=c.querySelector('.card-body');
+  const tblSect=(ico,lbl,rk,rrk)=>{
+    const s=document.createElement('div');s.className='sub-sect';
+    s.innerHTML=`<div class="sub-title">${ico} ${lbl} <span class="sub-badge info">Tabla</span></div>
+      <p style="font-size:11px;color:var(--txt-mu);margin-bottom:8px">Copie desde Excel / Power BI y pegue aquí (Tab-separado).</p>`;
+    pasteTable(s,rk,rrk,'CCO');
+    body.appendChild(s);
+  };
+  tblSect('🔀','Vuelos de Traslado','cco.trasladosRaw','cco.trasladosRend');
+  tblSect('📋','Charters Programados','cco.chartersRaw','cco.chartersRend');
+  tblSect('🔁','Vuelos Interchange','cco.interchangeRaw','cco.interchangeRend');
+
+  const s4=document.createElement('div');s4.className='sub-sect';
+  s4.innerHTML=`<div class="sub-title">🔄 Cambio de Material <span class="sub-badge info">Texto</span></div>
+    <div class="field"><label>Descripción de cambios de material</label>
+    <textarea style="min-height:90px" placeholder="N/A — o describa los cambios de material..." oninput="_isTyping=true;store.cco.cambioMat=this.value;autoSave('CCO','Cambio material')">${esc(store.cco.cambioMat)}</textarea></div>`;
+  body.appendChild(s4);
+
+  const s5=document.createElement('div');s5.className='sub-sect';
+  s5.innerHTML=`<div class="sub-title">🛡 Disponibilidad de Backup <span class="sub-badge info">Formulario</span></div>`;
+  const rendBup=()=>{
+    Array.from(s5.children).filter(el=>!el.classList.contains('sub-title')).forEach(el=>el.remove());
+    store.cco.backups.forEach((e,i)=>{
+      const dc=e.diaCompleto===true;
+      const d=document.createElement('div');d.className='entry';
+      d.innerHTML=`<button class="erm" onclick="ccoBupRm(${i})">×</button>
+        <div class="frow c3" style="margin-bottom:10px">
+          <div class="field"><label>Fecha</label><input type="date" value="${e.fecha||''}" onchange="_isTyping=true;store.cco.backups[${i}].fecha=this.value;autoSave('CCO')"></div>
+          <div class="field"><label>Matrícula</label><input type="text" class="mono" placeholder="CC-DIB" value="${esc(e.mat)}" onchange="_isTyping=true;store.cco.backups[${i}].mat=this.value;autoSave('CCO')"></div>
+          <div class="field"><label>País base</label><select onchange="_isTyping=true;store.cco.backups[${i}].pais=this.value;autoSave('CCO')">
+            <option value="">— País —</option>
+            ${PAISES.map(p=>`<option value="${p.code}" ${e.pais===p.code?'selected':''}>${p.flag} ${p.name}</option>`).join('')}
+          </select></div>
+        </div>
+        <div class="frow c2" style="margin-bottom:10px">
+          <div class="field"><label>Tipo BUP</label><select onchange="_isTyping=true;store.cco.backups[${i}].tipo=this.value;autoSave('CCO')">
+            <option ${e.tipo==='Estructural'?'selected':''}>Estructural</option>
+            <option ${e.tipo==='AOG'?'selected':''}>AOG</option>
+          </select></div>
+          <div class="field" style="justify-content:flex-end;padding-top:18px">
+            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-weight:400">
+              <input type="checkbox" ${dc?'checked':''} style="width:16px;height:16px;accent-color:var(--jet-mid)" onchange="ccoBupDC(${i},this.checked)">
+              Día completo (00:00–23:59)</label>
+          </div>
+        </div>
+        <div class="frow c2" id="bup-h-${i}" style="${dc?'opacity:.35;pointer-events:none':''}">
+          <div class="field"><label>Desde (LT) — opcional</label><input type="time" value="${e.hi||''}" onchange="_isTyping=true;store.cco.backups[${i}].hi=this.value;autoSave('CCO')"></div>
+          <div class="field"><label>Hasta (LT) — opcional</label><input type="time" value="${e.hf||''}" onchange="_isTyping=true;store.cco.backups[${i}].hf=this.value;autoSave('CCO')"></div>
+        </div>`;
+      s5.appendChild(d);
+    });
+    const ab=document.createElement('button');ab.className='btn-add';ab.textContent='+ Agregar backup';
+    ab.onclick=()=>{store.cco.backups.push({tipo:'Estructural',diaCompleto:false});autoSave('CCO','Backup agregado');rendBup();};
+    s5.appendChild(ab);
+  };
+  rendBup();body.appendChild(s5);area.appendChild(c);
+  window.ccoBupRm=i=>{store.cco.backups.splice(i,1);autoSave('CCO','Backup eliminado');rendBup();};
+  window.ccoBupDC=(i,v)=>{
+    store.cco.backups[i].diaCompleto=v;
+    if(v){store.cco.backups[i].hi='00:00';store.cco.backups[i].hf='23:59';}else{store.cco.backups[i].hi='';store.cco.backups[i].hf='';}
+    autoSave('CCO');
+    const el=document.getElementById('bup-h-'+i);
+    if(el)el.style.cssText=v?'opacity:.35;pointer-events:none;display:grid;gap:9px;grid-template-columns:1fr 1fr':'display:grid;gap:9px;grid-template-columns:1fr 1fr';
+  };
+}
+
+// ════════════════════════════════════════════════════════
+// CPP
+// ════════════════════════════════════════════════════════
+function renderCPP(area){
+  const c=mkCard('👥','Centro de Protección al Pasajero','Por AOC');
+  const body=c.querySelector('.card-body');
+  const grid=document.createElement('div');grid.className='cpp-grid';
+  [{key:'jat',flag:'🇨🇱',label:'JAT Chile'},{key:'jap',flag:'🇵🇪',label:'JAP Perú'},{key:'jes',flag:'🇦🇷',label:'JES Argentina'},{key:'jec',flag:'🇨🇴',label:'JEC Colombia'}].forEach(b=>{
+    const box=document.createElement('div');box.className='cpp-box';
+    const hdr=document.createElement('div');hdr.className='cpp-box-hdr';hdr.textContent=b.flag+' '+b.label;
+    const field=document.createElement('div');field.className='field';
+    const lbl=document.createElement('label');lbl.textContent='Pasajeros / Situación';
+    const ta=document.createElement('textarea');
+    ta.style.minHeight='80px';ta.placeholder='SIN PAX';
+    ta.value=store.cpp[b.key]||'';
+    ta.oninput=()=>{_isTyping=true;store.cpp[b.key]=ta.value;autoSave('CPP','CPP '+b.label);};
+    field.appendChild(lbl);field.appendChild(ta);
+    box.appendChild(hdr);box.appendChild(field);
+    grid.appendChild(box);
+  });
+  body.appendChild(grid);area.appendChild(c);
+}
+
+// ════════════════════════════════════════════════════════
+// AEROPUERTO
+// ════════════════════════════════════════════════════════
+function renderApto(area){
+  const c=mkCard('🏢','Aeropuerto','OVBK · Capacidad Hotelera · Simultaneidad');
+  const body=c.querySelector('.card-body');
+  const s1=document.createElement('div');s1.className='sub-sect';
+  s1.innerHTML=`<div class="sub-title">📊 OVBK Operacional <span class="sub-badge info">Texto</span></div>
+    <div class="field"><label>Detalle de overbooking operacional</label>
+    <textarea style="min-height:100px" placeholder="N/A — o detalle de aeropuertos con OVBK..." onchange="_isTyping=true;store.apto.ovbk=this.value;autoSave('Aeropuerto','OVBK')">${esc(store.apto.ovbk)}</textarea></div>`;
+  body.appendChild(s1);
+  const s2=document.createElement('div');s2.className='sub-sect';
+  s2.innerHTML=`<div class="sub-title">🏨 Capacidad Hotelera <span class="sub-badge warn">Texto</span></div>
+    <div class="frow c2">
+      <div class="field"><label style="color:var(--warn)">⚠️ Limitada (ATO)</label>
+        <textarea style="min-height:80px;border-color:var(--warn)" placeholder="CUC - ADZ - MTR" onchange="_isTyping=true;store.apto.hotelLim=this.value;autoSave('Aeropuerto','Hotel Limitada')">${esc(store.apto.hotelLim)}</textarea></div>
+      <div class="field"><label style="color:var(--err)">🔴 Crítica (ATO)</label>
+        <textarea style="min-height:80px;border-color:var(--err)" placeholder="N/A" onchange="_isTyping=true;store.apto.hotelCrit=this.value;autoSave('Aeropuerto','Hotel Crítica')">${esc(store.apto.hotelCrit)}</textarea></div>
+    </div>`;
+  body.appendChild(s2);
+  const s3=document.createElement('div');s3.className='sub-sect';
+  s3.innerHTML=`<div class="sub-title">🔢 Simultaneidad máxima dentro de 1 hora <span class="sub-badge info">Foto</span></div>
+    <p style="font-size:11px;color:var(--txt-mu);margin-bottom:10px">Imagen fija — no se borra al formatear. Solo se reemplaza o elimina manualmente.</p>`;
+  singlePhoto(s3,['apto','simFoto'],'Arrastra o clic para cargar imagen de simultaneidad','Aeropuerto');
+  body.appendChild(s3);
+    area.appendChild(c);
+}
+
+// ════════════════════════════════════════════════════════
+// MANTENIMIENTO — Riesgos · Diferidos · Slots
+// Cada categoría: texto libre + foto
+// ════════════════════════════════════════════════════════
+function renderMant(area){
+  const c=mkCard('🔧','Mantenimiento','Riesgos · Diferidos · Slots de Mantenimiento');
+  const body=c.querySelector('.card-body');
+
+  const cats=[
+    {key:'riesgos', ico:'⚠️', label:'Riesgos de Programación',
+     textKey:'riesgosText', fotoKey:'riesgosFoto',
+     ph:'Describa los riesgos de programación de mantenimiento...'},
+    {key:'diferidos', ico:'📌', label:'Diferidos',
+     textKey:'diferidosText', fotoKey:'diferidosFoto',
+     ph:'Describa los ítems diferidos activos...'},
+    {key:'slots', ico:'🗓', label:'Slots de Mantenimiento',
+     textKey:'slotsText', fotoKey:'slotFoto',
+     ph:'Observaciones de slots de mantenimiento...'}
+  ];
+
+  cats.forEach(cat=>{
+    const s=document.createElement('div');s.className='sub-sect';
+    const title=document.createElement('div');title.className='sub-title';
+    title.innerHTML=`${cat.ico} ${cat.label} <span class="sub-badge info">Texto + Foto</span>`;
+    s.appendChild(title);
+
+    // Text area
+    const field=document.createElement('div');field.className='field';field.style.marginBottom='12px';
+    const ta=document.createElement('textarea');
+    ta.style.cssText='width:100%;min-height:80px;resize:vertical;font-size:12px;line-height:1.6';
+    ta.placeholder=cat.ph;
+    ta.value=store.mant[cat.textKey]||'';
+    ta.oninput=()=>{_isTyping=true;store.mant[cat.textKey]=ta.value;autoSave('Mantenimiento',cat.label+' texto actualizado');};
+    field.appendChild(ta);s.appendChild(field);
+
+    // Photo zone
+    const photoLabel=document.createElement('label');
+    photoLabel.style.cssText='display:block;margin-bottom:6px';
+    photoLabel.textContent='Imagen / Captura';
+    s.appendChild(photoLabel);
+    singlePhoto(s,['mant',cat.fotoKey],'Arrastra o clic para cargar imagen','Mantenimiento');
+
+    body.appendChild(s);
+  });
+
+  area.appendChild(c);
+}
+
+// ════════════════════════════════════════════════════════
+// RESUMEN GENERAL
+// ════════════════════════════════════════════════════════
+function renderResumen(area){
+  const hdr=document.createElement('div');hdr.className='card';
+  hdr.innerHTML=`<div class="card-hdr"><div class="card-ico">📋</div><div style="flex:1"><div class="card-title">Resumen General · Operación +24H</div>
+    <div class="card-sub">Consolidado todas las áreas · ${new Date().toLocaleDateString('es-CL',{day:'2-digit',month:'2-digit',year:'numeric'})}</div></div>
+    <div class="card-acts"><button class="btn-h" style="font-size:11px" onclick="exportResumenPDF()">⬇ PDF</button></div></div>`;
+  area.appendChild(hdr);
+
+  // Safely get counts — works with both old (array) and new (string) meteo shape
+  const tn=(store.notam.raw||'').split('\n').filter(l=>l.trim()).length;
+  const tv=store.meteo.vis?(store.meteo.vis.trim()?1:0):(Array.isArray(store.meteo.visibilidad)?store.meteo.visibilidad.length:0);
+  const tt=store.meteo.torm?(store.meteo.torm.trim()?1:0):(Array.isArray(store.meteo.tormentas)?store.meteo.tormentas.length:0);
+  const tb=(store.cco.backups||[]).length;
+  const kpi=document.createElement('div');
+  const visAlert=store.meteo.vis&&store.meteo.vis.trim();
+  const tormAlert=store.meteo.torm&&store.meteo.torm.trim();
+  kpi.innerHTML=`<div class="ds-grid">
+    <div class="ds-card"><div class="ds-num" style="color:${tn?'var(--err)':'var(--ok)'}">${tn}</div><div class="ds-lbl">NOTAMs</div></div>
+    <div class="ds-card"><div class="ds-num" style="color:${visAlert?'var(--warn)':'var(--ok)'}">${visAlert?'⚠️':'✓'}</div><div class="ds-lbl">Visibilidad</div></div>
+    <div class="ds-card"><div class="ds-num" style="color:${tormAlert?'var(--err)':'var(--ok)'}">${tormAlert?'⚠️':'✓'}</div><div class="ds-lbl">Tormentas</div></div>
+    <div class="ds-card"><div class="ds-num">${tb}</div><div class="ds-lbl">Backups</div></div></div>`;
+  area.appendChild(kpi);
+
+  const rsect=(ico,lbl,html)=>{
+    const w=document.createElement('div');
+    w.innerHTML=`<div style="display:flex;align-items:center;gap:8px;padding:10px 16px;background:var(--jet);border-radius:8px 8px 0 0">
+      <span style="font-size:14px">${ico}</span><span style="font-size:12px;font-weight:600;color:#fff">${lbl}</span></div>
+      <div style="border:1px solid var(--bdr);border-top:none;border-radius:0 0 8px 8px;padding:14px 16px;background:var(--surf);margin-bottom:12px">${html}</div>`;
+    area.appendChild(w);
+  };
+
+  // NOTAM — parsed from raw text, grouped by country
+  let nh='';
+  const rawNotam=store.notam.raw||'';
+  if(!rawNotam.trim()){
+    nh='<span style="font-size:12px;color:var(--ok)">✓ Sin NOTAMs registrados</span>';
+  } else {
+    const notamEntries=parseNotamText(rawNotam);
+    const ng={};
+    notamEntries.forEach(e=>{const p=icaoToPais(e.icao);(ng[p]=ng[p]||[]).push(e);});
+    const nord=['Chile','Argentina','Perú','Colombia','Brasil','Uruguay','Bolivia','Ecuador','Panamá','México','Rep. Dominicana','Otros'];
+    Object.keys(ng).sort((a,b)=>(nord.indexOf(a)+1||99)-(nord.indexOf(b)+1||99)).forEach(pais=>{
+      const flag=icaoToFlag(ng[pais][0].icao);
+      nh+=`<div style="margin-bottom:10px"><div style="font-size:11.5px;font-weight:600;color:var(--jet-mid);margin-bottom:5px">${flag} ${pais}</div>`;
+      ng[pais].forEach(e=>{
+        nh+=`<div style="font-size:11.5px;padding:4px 0;display:flex;gap:10px;align-items:baseline;border-bottom:1px solid var(--bdr)">
+          <span class="mono" style="font-weight:700;color:var(--jet);flex-shrink:0;min-width:42px">${esc(e.icao)}</span>
+          <span style="color:var(--txt-m);line-height:1.5">${esc(e.detail)}</span></div>`;
+      });
+      nh+='</div>';
+    });
+  }
+  rsect('⚠️','NOTAM',nh);
+
+  // Meteo: always re-parse from raw text in resumen (avoids Supabase JSON deserialization issues)
+  const renderMeteoSection=(lbl,raw)=>{
+    let h='<div style="margin-bottom:14px"><div style="font-size:11px;font-weight:600;color:var(--txt-mu);text-transform:uppercase;letter-spacing:.8px;margin-bottom:8px">'+lbl+'</div>';
+    if(!raw||!raw.trim()){
+      return h+'<span style="font-size:11.5px;color:var(--ok)">✓ Sin alertas</span></div>';
+    }
+    const groups=parseMeteoText(raw);
+    if(!groups||!groups.length){
+      return h+'<div style="font-size:12px;color:#3A4E7A;line-height:1.6;white-space:pre-wrap;padding:9px 12px;background:#F0F3FA;border-radius:7px">'+esc(raw)+'</div></div>';
+    }
+    groups.forEach(g=>{
+      if(!g) return;
+      const lines=Array.isArray(g.lines)?g.lines:[];
+      h+='<div style="margin-bottom:8px;border:1px solid #D0D8EC;border-radius:8px;overflow:hidden">';
+      h+='<div style="background:#E8EFFE;padding:5px 11px;font-size:11px;font-weight:600;color:#0A2463">'+(g.flag||'🌍')+' '+(g.pais||'')+'</div>';
+      h+='<div style="padding:8px 11px">';
+      lines.forEach(line=>{
+        if(!line) return;
+        const icaoM=line.match(/^([A-Z]{4})/);
+        if(icaoM) h+='<div style="font-size:11.5px;color:#3A4E7A;padding:3px 0;border-bottom:1px solid #EEF1F8;display:flex;gap:9px"><span style="font-family:monospace;font-weight:700;color:#0A2463;min-width:42px">'+esc(icaoM[1])+'</span><span>'+esc(line.slice(4).replace(/^\s*[-\/]\s*/,''))+'</span></div>';
+        else h+='<div style="font-size:11.5px;color:#3A4E7A;padding:3px 0">'+esc(line)+'</div>';
+      });
+      h+='</div></div>';
+    });
+    return h+'</div>';
+  };
+  rsect('🌤','Meteorología',
+    renderMeteoSection('Visibilidad',store.meteo.vis)+
+    renderMeteoSection('Vientos',store.meteo.vto)+
+    renderMeteoSection('Tormentas',store.meteo.torm)
+  );
+  rsect('👤','Turnos',store.roles.foto?`<img src="${store.roles.foto}" style="max-width:100%;max-height:300px;border-radius:8px;border:1px solid var(--bdr);object-fit:contain;display:block">`:'<span style="font-size:12px;color:var(--txt-mu)">Sin imagen cargada</span>');
+
+  const cc=store.cco,nd='<span style="font-size:11.5px;color:var(--txt-mu)">Sin datos</span>';
+  const cs=(l,c)=>`<div style="margin-bottom:12px"><div style="font-size:11px;font-weight:600;color:var(--txt-mu);text-transform:uppercase;letter-spacing:.7px;margin-bottom:6px">${l}</div>${c}</div>`;
+  let ch='';
+  ch+=cs('🔀 Vuelos de Traslado',cc.trasladosRend?`<div style="overflow-x:auto">${cc.trasladosRend}</div>`:nd);
+  ch+=cs('Charters',cc.chartersRend?`<div style="overflow-x:auto">${cc.chartersRend}</div>`:nd);
+  ch+=cs('Interchange',cc.interchangeRend?`<div style="overflow-x:auto">${cc.interchangeRend}</div>`:nd);
+  if(cc.cambioMat&&cc.cambioMat!=='N/A') ch+=cs('Material',`<div style="font-size:11.5px;color:var(--txt-m);white-space:pre-wrap">${esc(cc.cambioMat)}</div>`);
+  if(cc.backups.length) ch+=cs('Backups',cc.backups.map(b=>{
+    const po=PAISES.find(x=>x.code===b.pais)||{flag:'',name:b.pais||''};
+    const dp=b.diaCompleto?'Día completo':(b.hi||b.hf?`${b.hi||''}–${b.hf||''} LT`:'');
+    return `<div style="font-size:11.5px;padding:5px 0;border-bottom:1px solid var(--bdr);display:flex;flex-wrap:wrap;align-items:center;gap:8px">
+      <span class="mono" style="font-weight:600">${esc(b.mat||'?')}</span><span style="color:var(--txt-mu)">${po.flag} ${po.name}</span>
+      <span class="cbk cbk-info">${esc(b.tipo||'')}</span>
+      ${b.fecha?`<span style="color:var(--txt-mu);font-size:10.5px">${esc(b.fecha)}</span>`:''}
+      ${dp?`<span style="background:var(--ok-bg);color:var(--ok);padding:1px 8px;border-radius:9px;font-size:10.5px;font-weight:600">${esc(dp)}</span>`:''}</div>`;
+  }).join(''));
+  rsect('✈️','Planificación CCO',ch);
+
+  rsect('👥','Centro de Protección al Pasajero',`<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+    ${[{k:'jat',f:'🇨🇱',l:'JAT Chile'},{k:'jap',f:'🇵🇪',l:'JAP Perú'},{k:'jes',f:'🇦🇷',l:'JES Argentina'},{k:'jec',f:'🇨🇴',l:'JEC Colombia'}].map(b=>`
+    <div style="border:1px solid var(--bdr);border-radius:8px;overflow:hidden">
+      <div style="background:var(--jet-light);padding:7px 11px;font-size:11px;font-weight:600;color:var(--jet)">${b.f} ${b.l}</div>
+      <div style="padding:9px 11px;font-size:11.5px;color:var(--txt-m);white-space:pre-wrap;line-height:1.5">${esc(store.cpp[b.k]||'SIN PAX')}</div></div>`).join('')}</div>`);
+
+  const a=store.apto;
+  // Build a fresh sim table (same data as renderApto) — no DOM dependency
+  const simTableHTML=(()=>{
+    const simData=[
+      ['CHILE','SCL','7','PERÚ','LIM','6'],['','CCP','2','','CUZ','5'],['','CJC','2','','AQP','3'],
+      ['','IQQ','1','','CJA','2'],['','LSC','2','','TPP','2'],['','PMC','1','','CIX','2'],
+      ['','ZCO','1','','PIU','2'],['','BBA','1','','TRU','2'],['','ANF','2','COLOMBIA','BOG','7'],
+      ['','ARI','1','','MDE','7'],['','PUQ','1','','CTG','3'],['','MHC','1','','SMR','2'],
+      ['','PNT','1','','ADZ','1'],['ARGENTINA','EZE','6','','PEI','2'],['','AEP','6','','CUC','2'],
+      ['','BRC*','2','','CLO','5'],['','USH','2','','MTR','1'],['','NQN','2','','BAQ','2'],
+      ['','JUJ','Sin Op.','BRASIL','GIG','2'],['','SLA','1','','FLN','2'],['','MDZ','2','','GRU','1'],
+      ['','COR','2','','IGU','1'],['','CPC','1','','CWB','Sin Op.'],['','IGR','1','','REC','1'],
+      ['','TUC','1','','NAT','1'],['','FTE','1','URUGUAY','MVD','1'],['','CRD','1','ECUADOR','UIO','2'],
+      ['','REL','1','','GYE','Sin Op.'],['PARAGUAY','ASU','1','REP. DOM.','PUJ','1']
+    ];
+    const fmap={'CHILE':'🇨🇱','ARGENTINA':'🇦🇷','PARAGUAY':'🇵🇾','PERÚ':'🇵🇪','COLOMBIA':'🇨🇴','BRASIL':'🇧🇷','URUGUAY':'🇺🇾','ECUADOR':'🇪🇨','REP. DOM.':'🇩🇴'};
+    const badge=v=>{
+      if(v==='Sin Op.') return `<span style="background:#fee2e2;color:#991b1b;padding:1px 7px;border-radius:8px;font-size:9.5px;font-weight:700">Sin Op.</span>`;
+      const n=parseInt(v);const c=n>=6?'#991b1b':n>=3?'#b45309':'#1a7f4b';const bg=n>=6?'#fee2e2':n>=3?'#fef3c7':'#e3f5ec';
+      return `<span style="background:${bg};color:${c};padding:1px 9px;border-radius:8px;font-size:10.5px;font-weight:700">${v}</span>`;
+    };
+    let lastL='',lastR='';
+    let rows='';
+    simData.forEach(([pl,al,ml,pr,ar,mr],idx)=>{
+      const bg=idx%2===0?'#fff':'#f5f7fc';
+      const newL=pl&&pl!==lastL;const newR=pr&&pr!==lastR;
+      if(pl)lastL=pl;if(pr)lastR=pr;
+      const cL=newL&&pl?`<td style="padding:5px 10px;background:${bg};font-size:10px;font-weight:700;color:#0A2463">${fmap[pl]||''} ${pl}</td>`:`<td style="background:${bg}"></td>`;
+      const cR=newR&&pr?`<td style="padding:5px 10px;background:${bg};font-size:10px;font-weight:700;color:#1B4FBF;border-left:1px solid #D0D8EC">${fmap[pr]||''} ${pr}</td>`:`<td style="background:${bg};border-left:1px solid #D0D8EC"></td>`;
+      rows+=`<tr>${cL}<td style="padding:4px 8px;background:${bg};text-align:center;font-weight:600;font-size:11px;color:#0A2463">${al}</td><td style="padding:4px 8px;background:${bg};text-align:center">${badge(ml)}</td>${cR}<td style="padding:4px 8px;background:${bg};text-align:center;font-weight:600;font-size:11px;color:#0A2463">${ar}</td><td style="padding:4px 8px;background:${bg};text-align:center">${badge(mr)}</td></tr>`;
+    });
+    return `<div style="overflow-x:auto;margin-top:10px"><table style="width:100%;border-collapse:collapse;font-size:11px;border-radius:8px;overflow:hidden">
+      <thead><tr style="background:#0A2463"><th style="padding:7px 10px;color:#fff;text-align:left;font-size:9.5px">PAÍS</th><th style="padding:7px 8px;color:#fff;text-align:center;font-size:9.5px">ATO</th><th style="padding:7px 10px;color:#FFD60A;text-align:center;font-size:9.5px">SIM MAX</th><th style="padding:7px 10px;color:#fff;text-align:left;font-size:9.5px;border-left:1px solid rgba(255,255,255,.2)">PAÍS</th><th style="padding:7px 8px;color:#fff;text-align:center;font-size:9.5px">ATO</th><th style="padding:7px 10px;color:#FFD60A;text-align:center;font-size:9.5px">SIM MAX</th></tr></thead>
+      <tbody>${rows}</tbody></table></div>`;
+  })();
+
+      const simImg=a.simFoto
+    ?'<div style="font-size:10px;color:#7A8DB5;font-weight:600;text-transform:uppercase;letter-spacing:.6px;margin-bottom:8px">🔢 Simultaneidad máxima</div><img src="'+a.simFoto+'" style="max-width:100%;border-radius:8px;border:1px solid #D0D8EC;display:block">'
+    :'<p style="font-size:11.5px;color:#7A8DB5">Sin imagen de simultaneidad cargada</p>';
+  rsect('🏢','Aeropuerto',
+    '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:14px">'
+    +'<div style="border-radius:8px;padding:10px;background:#F0F3FA;border:1px solid #D0D8EC"><div style="font-size:9.5px;color:#7A8DB5;font-weight:600;text-transform:uppercase;margin-bottom:4px">OVBK Operacional</div><div style="font-size:12px;white-space:pre-wrap">'+esc(a.ovbk||'N/A')+'</div></div>'
+    +'<div style="border-radius:8px;padding:10px;background:#FEF3C7;border:1px solid #B45309"><div style="font-size:9.5px;color:#B45309;font-weight:600;text-transform:uppercase;margin-bottom:4px">⚠️ Hotel LIMITADA</div><div style="font-size:12px;font-weight:600;color:#B45309;white-space:pre-wrap">'+esc(a.hotelLim||'N/A')+'</div></div>'
+    +'<div style="border-radius:8px;padding:10px;background:#FEE2E2;border:1px solid #991B1B"><div style="font-size:9.5px;color:#991B1B;font-weight:600;text-transform:uppercase;margin-bottom:4px">🔴 Hotel CRÍTICA</div><div style="font-size:12px;font-weight:600;color:#991B1B;white-space:pre-wrap">'+esc(a.hotelCrit||'N/A')+'</div></div>'
+    +'</div>'+simImg
+  );
+  const m=store.mant;let mh='';
+  const mantCats=[
+    {ico:'⚠️',lbl:'Riesgos de Programación',textKey:'riesgosText',fotoKey:'riesgosFoto'},
+    {ico:'📌',lbl:'Diferidos',textKey:'diferidosText',fotoKey:'diferidosFoto'},
+    {ico:'🗓',lbl:'Slots de Mantenimiento',textKey:'slotsText',fotoKey:'slotFoto'}
+  ];
+  mantCats.forEach(cat=>{
+    const hasText=m[cat.textKey]&&m[cat.textKey].trim();
+    const hasFoto=m[cat.fotoKey];
+    if(!hasText&&!hasFoto) return;
+    mh+='<div style="margin-bottom:14px">';
+    mh+='<div style="font-size:10px;color:var(--txt-mu);font-weight:600;text-transform:uppercase;letter-spacing:.6px;margin-bottom:7px">'+cat.lbl+'</div>';
+    if(hasText) mh+='<div style="font-size:12px;color:var(--txt-m);line-height:1.6;white-space:pre-wrap;padding:9px 12px;background:var(--bg);border-radius:7px;margin-bottom:8px">'+esc(m[cat.textKey])+'</div>';
+    if(hasFoto) mh+='<img src="'+m[cat.fotoKey]+'" style="max-width:100%;max-height:300px;border-radius:8px;border:1px solid var(--bdr);object-fit:contain;display:block">';
+    mh+='</div>';
+  });
+  rsect('🔧','Mantenimiento',mh||'<span style="font-size:12px;color:var(--txt-mu)">Sin datos registrados</span>');
+}
+
+// ════════════════════════════════════════════════════════
+// INSPECCIÓN
+// ════════════════════════════════════════════════════════
+function renderInspeccion(area){
+  const c=mkCard('🔍','Registro de Actividad · Inspección','Línea de tiempo por área y usuario',`<button class="btn-h" style="font-size:11px" onclick="exportInspeccionPDF()">⬇ PDF</button>`);
+  const body=c.querySelector('.card-body');
+  const ML={notam:'NOTAM',meteo:'Meteorología',roles:'Turnos',cco:'CCO',cpp:'CPP',apto:'Aeropuerto',mant:'Mantenimiento'};
+  const AC={Despacho:'cbk-info',Roles:'cbk-warn',CCO:'cbk-ok',CPP:'cbk-warn',Aeropuerto:'cbk-err',Mantenimiento:'cbk-info',Manual:'cbk-ok',Sistema:'cbk-err'};
+  if(!actLog.length){body.innerHTML='<div style="text-align:center;padding:28px;color:var(--txt-mu)">Sin actividad registrada.</div>';}
+  else{
+    const tl=document.createElement('div');tl.className='timeline';
+    [...actLog].reverse().forEach(ev=>{
+      const d=new Date(ev.ts);
+      const item=document.createElement('div');item.className='tl-item';
+      item.innerHTML=`<div class="tl-dot ok"></div>
+        <div class="tl-time">${d.toLocaleDateString('es-CL')} · ${d.toLocaleTimeString('es-CL',{hour:'2-digit',minute:'2-digit',second:'2-digit'})}</div>
+        <div class="tl-title">${ML[ev.module]||ev.module}<span class="tl-badge ${AC[ev.area]||'cbk-info'}">${ev.area}</span></div>
+        <div class="tl-sub">${esc(ev.detail||'')}</div>
+        ${ev.user_name?`<div class="tl-user">👤 ${esc(ev.user_name)} · ${esc(ev.user_area||'')}</div>`:''}`;
+      tl.appendChild(item);
+    });
+    body.appendChild(tl);
+  }
+  area.appendChild(c);
+}
+
+// ════════════════════════════════════════════════════════
+// MODAL FORMATEAR
+// ════════════════════════════════════════════════════════
+function openModal(){document.getElementById('modal-clear').classList.add('open');document.getElementById('modal-ci').value='';}
+function closeModal(){document.getElementById('modal-clear').classList.remove('open');}
+async function confirmClear(){
+  const v=document.getElementById('modal-ci').value.trim().toUpperCase();
+  if(v!=='BORRAR'){document.getElementById('modal-ci').style.borderColor='var(--err)';toast('Escriba exactamente "BORRAR"','warn');return;}
+  // Preserve simFoto — survives formatear
+  const simFoto=store.apto.simFoto||localStorage.getItem('js_simFoto')||null;
+  store=emptyStore();
+  store.apto.simFoto=simFoto; // restore immediately
+  localStorage.removeItem('js_occ_local');
+  if(_sbClient){
+    const today=document.getElementById('op-date').value;
+    await _sbClient.from('occ_data').upsert({op_date:today,payload:store,updated_at:new Date().toISOString()},{onConflict:'op_date'});
+    await _sbClient.from('occ_log').delete().eq('op_date',today);
+    actLog=[];
+  }
+  closeModal();toast('✓ Datos eliminados (foto de simultaneidad conservada)');
+  nav('resumen',document.getElementById('nav-resumen'));
+}
+document.getElementById('modal-clear').addEventListener('click',e=>{if(e.target===e.currentTarget)closeModal();});
+
+// ════════════════════════════════════════════════════════
+// PDF EXPORT
+// ════════════════════════════════════════════════════════
+function buildPDF(fn,w){
+  const tmp=document.createElement('div');
+  tmp.style.cssText=`position:fixed;top:-9999px;left:-9999px;width:${w}px;background:#fff;padding:26px;font-family:Arial,sans-serif;font-size:12px;color:#0D1B3E`;
+  tmp.innerHTML=`<div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;padding-bottom:12px;border-bottom:3px solid #0A2463">
+    <span style="font-size:18px;font-weight:700;color:#0A2463">✈ JetSmart · Control Operacional +24H</span>
+    <span style="margin-left:auto;font-size:10px;color:#7A8DB5">Operación: ${document.getElementById('op-date').value} · ${new Date().toLocaleString('es-CL')}</span></div>`;
+  fn(tmp);document.body.appendChild(tmp);return tmp;
+}
+function toPDF(tmp,name){
+  tmp.style.height='auto';
+  tmp.style.overflow='visible';
+  const h=tmp.scrollHeight||tmp.offsetHeight;
+  tmp.style.height=h+'px';
+  html2canvas(tmp,{
+    scale:1.5,useCORS:true,allowTaint:true,
+    scrollY:0,scrollX:0,
+    width:tmp.offsetWidth,
+    height:h,
+    windowWidth:1200,
+    windowHeight:h,
+    logging:false
+  }).then(canvas=>{
+    const{jsPDF}=window.jspdf;
+    const pdf=new jsPDF('p','mm','a4');
+    const pw=pdf.internal.pageSize.getWidth();
+    const ph=pdf.internal.pageSize.getHeight();
+    // Scale factor: mm per pixel
+    const mmPerPx=pw/canvas.width;
+    // Actual content height in mm — clamp to real content, no trailing blank
+    const imgHraw=canvas.height*mmPerPx;
+    // Never let last page be blank: if remainder < 2mm, trim to previous page
+    const pages=Math.ceil(imgHraw/ph);
+    const lastPageH=imgHraw-(pages-1)*ph;
+    const totalPages=(lastPageH<2&&pages>1)?pages-1:pages;
+    const imgH=totalPages*ph<imgHraw?imgHraw:imgHraw; // use real height always
+    const imgData=canvas.toDataURL('image/jpeg',.92);
+    for(let p=0;p<totalPages;p++){
+      if(p>0) pdf.addPage();
+      pdf.addImage(imgData,'JPEG',0,-(p*ph),pw,imgH);
+    }
+    pdf.save(name);
+    document.body.removeChild(tmp);
+    toast('✓ PDF descargado');
+  }).catch(e=>{document.body.removeChild(tmp);toast('Error PDF: '+e.message,'warn');});
+}
+async function exportResumenPDF(){
+  toast('Generando PDF... (cargando datos)');
+  if(_sbClient){try{await pullData();}catch(e){console.warn('pullData:',e);}}
+  const opDate=document.getElementById('op-date').value;
+  toast('Generando PDF...');
+
+  // ── Build text-only wrap div
+  const wrap=document.createElement('div');
+  wrap.style.cssText='position:fixed;top:-9999px;left:-9999px;width:900px;background:#fff;font-family:Arial,sans-serif;font-size:12px;color:#0D1B3E;padding:28px 32px;box-sizing:border-box';
+
+  // Page header
+  wrap.innerHTML=`<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;padding-bottom:12px;border-bottom:3px solid #0A2463">
+    <span style="font-size:17px;font-weight:700;color:#0A2463">JetSmart · Control Operacional +24H</span>
+    <span style="font-size:10px;color:#7A8DB5">Operación: ${opDate} · ${new Date().toLocaleDateString('es-CL')}</span>
+  </div>`;
+
+  // KPI strip
+  const tn=(store.notam.raw||'').split('\n').filter(l=>l.trim()).length;
+  const tb=(store.cco.backups||[]).length;
+  const visAlert=store.meteo.vis&&store.meteo.vis.trim();
+  const tormAlert=store.meteo.torm&&store.meteo.torm.trim();
+  wrap.innerHTML+=`<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:20px">
+    <div style="background:#EEF1F8;border-radius:8px;padding:12px;text-align:center;border:1px solid #D0D8EC"><div style="font-size:22px;font-weight:700;color:${tn?'#991B1B':'#1A7F4B'}">${tn}</div><div style="font-size:10px;color:#7A8DB5">NOTAMs</div></div>
+    <div style="background:#EEF1F8;border-radius:8px;padding:12px;text-align:center;border:1px solid #D0D8EC"><div style="font-size:22px;font-weight:700;color:${visAlert?'#B45309':'#1A7F4B'}">${visAlert?'⚠':'✓'}</div><div style="font-size:10px;color:#7A8DB5">Visibilidad</div></div>
+    <div style="background:#EEF1F8;border-radius:8px;padding:12px;text-align:center;border:1px solid #D0D8EC"><div style="font-size:22px;font-weight:700;color:${tormAlert?'#991B1B':'#1A7F4B'}">${tormAlert?'⚠':'✓'}</div><div style="font-size:10px;color:#7A8DB5">Tormentas</div></div>
+    <div style="background:#EEF1F8;border-radius:8px;padding:12px;text-align:center;border:1px solid #D0D8EC"><div style="font-size:22px;font-weight:700;color:#0A2463">${tb}</div><div style="font-size:10px;color:#7A8DB5">Backups</div></div>
+  </div>`;
+
+  const addSection=(title,html)=>{
+    if(!html||!html.replace(/<[^>]+>/g,'').trim()) return;
+    wrap.innerHTML+=`<div style="margin-bottom:16px">
+      <div style="background:#0A2463;color:#fff;padding:8px 12px;font-size:11px;font-weight:700;border-radius:6px 6px 0 0">${title}</div>
+      <div style="border:1px solid #D0D8EC;border-top:none;border-radius:0 0 6px 6px;padding:13px 14px;background:#fff">${html}</div>
+    </div>`;
+  };
+
+  // Text sections — no images (grouped by area)
+  addSection('NOTAM', buildPdfNOTAM());
+  addSection('Meteorología', buildPdfMeteo());
+  if(!store.roles.foto) addSection('Turnos', '<p style="font-size:12px;color:#7A8DB5">Sin imagen de turnos cargada.</p>');
+  addSection('Planificación CCO', buildPdfCCO());
+  addSection('Centro de Protección al Pasajero', buildPdfCPP());
+  addSection('Aeropuerto', buildPdfAptoNoImg());
+  const mantText=buildPdfMantTextOnly();
+  if(mantText) addSection('Mantenimiento', mantText);
+
+  document.body.appendChild(wrap);
+  await new Promise(r=>setTimeout(r,200));
+
+  const totalH=wrap.scrollHeight;
+  const canvas=await html2canvas(wrap,{
+    scale:1.6,useCORS:true,allowTaint:true,
+    scrollX:0,scrollY:0,width:wrap.offsetWidth,height:totalH,
+    windowWidth:900,windowHeight:totalH,logging:false
+  });
+  document.body.removeChild(wrap);
+
+  const{jsPDF}=window.jspdf;
+  const pdf=new jsPDF('p','mm','a4');
+  const PW=pdf.internal.pageSize.getWidth();
+  const PH=pdf.internal.pageSize.getHeight();
+  const MARGIN=10;
+  const CW=PW-MARGIN*2;
+  const mmPerPx=CW/canvas.width;
+  const pageH=PH-MARGIN*2;
+  let srcTop=0;
+
+  // Render text pages
+  while(srcTop<canvas.height-2){
+    if(srcTop>0) pdf.addPage();
+    const availPx=Math.floor(pageH/mmPerPx);
+    const slicePx=Math.min(availPx,canvas.height-srcTop);
+    if(slicePx<=0) break;
+    const tmp=document.createElement('canvas');
+    tmp.width=canvas.width;tmp.height=slicePx;
+    tmp.getContext('2d').drawImage(canvas,0,srcTop,canvas.width,slicePx,0,0,canvas.width,slicePx);
+    pdf.addImage(tmp.toDataURL('image/jpeg',.92),'JPEG',MARGIN,MARGIN,CW,slicePx*mmPerPx);
+    pdf.setFontSize(7);pdf.setTextColor(180,180,180);
+    pdf.text('Página '+(pdf.getNumberOfPages())+' · JetSmart OCC · '+opDate,PW/2,PH-4,{align:'center'});
+    pdf.setTextColor(0,0,0);
+    srcTop+=slicePx;
+  }
+
+  // Helper: add image page
+  const addImgPage=async(title,src)=>{
+    if(!src) return;
+    pdf.addPage();
+    pdf.setFillColor(10,36,99);pdf.rect(MARGIN,MARGIN,CW,9,'F');
+    pdf.setTextColor(255,255,255);pdf.setFontSize(9.5);pdf.setFont('helvetica','bold');
+    pdf.text(title,MARGIN+3,MARGIN+6);
+    pdf.setTextColor(0,0,0);pdf.setFont('helvetica','normal');
+    pdf.setFontSize(7);pdf.setTextColor(180,180,180);
+    pdf.text('Página '+(pdf.getNumberOfPages())+' · JetSmart OCC · '+opDate,PW/2,PH-4,{align:'center'});
+    pdf.setTextColor(0,0,0);
+    const fmt=src.startsWith('data:image/png')?'PNG':src.startsWith('data:image/webp')?'WEBP':'JPEG';
+    try{
+      const img=new Image();
+      await new Promise((res,rej)=>{img.onload=res;img.onerror=rej;img.src=src;});
+      const r=img.naturalWidth/img.naturalHeight;
+      let iw=CW,ih=iw/r;const mxH=PH-MARGIN*2-13;
+      if(ih>mxH){ih=mxH;iw=ih*r;}
+      pdf.addImage(src,fmt,MARGIN+(CW-iw)/2,MARGIN+11,iw,ih);
+    }catch(e){console.warn(title,e);}
+  };
+
+  // Image pages — grouped by area, in order
+  await addImgPage('Turnos · Disponibilidad', store.roles&&store.roles.foto);
+  await addImgPage('Aeropuerto · Simultaneidad máxima', store.apto&&store.apto.simFoto);
+
+  // Mantenimiento: each category text+foto together on same page
+  const mantCats=[
+    {tk:'riesgosText',fk:'riesgosFoto',label:'Mantenimiento · Riesgos de Programación'},
+    {tk:'diferidosText',fk:'diferidosFoto',label:'Mantenimiento · Diferidos'},
+    {tk:'slotsText',fk:'slotFoto',label:'Mantenimiento · Slots'}
+  ];
+  for(const mc of mantCats){
+    const txt=(store.mant&&store.mant[mc.tk])||'';
+    const src=(store.mant&&store.mant[mc.fk])||null;
+    if(!txt.trim()&&!src) continue;
+    pdf.addPage();
+    pdf.setFillColor(10,36,99);pdf.rect(MARGIN,MARGIN,CW,9,'F');
+    pdf.setTextColor(255,255,255);pdf.setFontSize(9.5);pdf.setFont('helvetica','bold');
+    pdf.text(mc.label,MARGIN+3,MARGIN+6);
+    pdf.setTextColor(0,0,0);pdf.setFont('helvetica','normal');
+    pdf.setFontSize(7);pdf.setTextColor(180,180,180);
+    pdf.text('Página '+(pdf.getNumberOfPages())+' · JetSmart OCC · '+opDate,PW/2,PH-4,{align:'center'});
+    pdf.setTextColor(0,0,0);
+    let py=MARGIN+12;
+    if(txt.trim()){
+      const td=document.createElement('div');
+      td.style.cssText='position:fixed;top:-9999px;left:-9999px;width:780px;background:#F0F3FA;font-family:Arial,sans-serif;font-size:12px;color:#3A4E7A;padding:10px 14px;border-radius:7px;white-space:pre-wrap;line-height:1.6;box-sizing:border-box';
+      td.textContent=txt;document.body.appendChild(td);
+      await new Promise(r=>setTimeout(r,30));
+      const tc=await html2canvas(td,{scale:1.4,useCORS:true,scrollX:0,scrollY:0,width:780,height:td.scrollHeight,windowWidth:800,windowHeight:td.scrollHeight,logging:false});
+      document.body.removeChild(td);
+      const mxTH=src?(PH-py-MARGIN-8)*0.3:PH-py-MARGIN-5;
+      const tH=Math.min(tc.height*(CW/tc.width),mxTH);
+      const tPx=Math.round(tH/(CW/tc.width));
+      const ts=document.createElement('canvas');ts.width=tc.width;ts.height=Math.min(tPx,tc.height);
+      ts.getContext('2d').drawImage(tc,0,0,tc.width,ts.height,0,0,tc.width,ts.height);
+      pdf.addImage(ts.toDataURL('image/jpeg',.9),'JPEG',MARGIN,py,CW,tH);
+      py+=tH+5;
+    }
+    if(src){
+      const fmt=src.startsWith('data:image/png')?'PNG':src.startsWith('data:image/webp')?'WEBP':'JPEG';
+      try{
+        const img=new Image();await new Promise((res,rej)=>{img.onload=res;img.onerror=rej;img.src=src;});
+        const r=img.naturalWidth/img.naturalHeight;
+        const mxH=PH-py-MARGIN-6;let iw=CW,ih=iw/r;
+        if(ih>mxH){ih=mxH;iw=ih*r;}
+        pdf.addImage(src,fmt,MARGIN+(CW-iw)/2,py,iw,ih);
+      }catch(e){console.warn(mc.fk,e);}
+    }
+  }
+
+  pdf.save('JetSmart_Resumen_'+opDate+'.pdf');
+  toast('✓ PDF descargado');
+}
+
+
+// ── Section builders for PDF (return HTML string)
+function buildPdfNOTAM(){
+  const raw=store.notam.raw||'';
+  if(!raw.trim()) return '<p style="color:#7A8DB5;font-size:12px">Sin NOTAMs registrados.</p>';
+  const entries=parseNotamText(raw);
+  const ng={};entries.forEach(e=>{const p=icaoToPais(e.icao);(ng[p]=ng[p]||[]).push(e);});
+  const nord=['Chile','Argentina','Perú','Colombia','Brasil','Uruguay','Bolivia','Ecuador','Panamá','México','Rep. Dominicana','Otros'];
+  let h='';
+  Object.keys(ng).sort((a,b)=>(nord.indexOf(a)+1||99)-(nord.indexOf(b)+1||99)).forEach(pais=>{
+    h+='<div style="margin-bottom:9px"><div style="font-size:11.5px;font-weight:700;color:#1B4FBF;margin-bottom:4px">'+icaoToFlag(ng[pais][0].icao)+' '+pais+'</div>';
+    ng[pais].forEach(e=>{h+='<div style="font-size:11px;padding:3px 0;border-bottom:1px solid #EEF1F8;display:flex;gap:9px"><span style="font-family:monospace;font-weight:700;color:#0A2463;min-width:42px">'+esc(e.icao)+'</span><span style="color:#3A4E7A">'+esc(e.detail)+'</span></div>';});
+    h+='</div>';
+  });
+  return h;
+}
+function buildPdfMeteo(){
+  if(!(store.meteo.vis||'').trim()&&!(store.meteo.vto||'').trim()&&!(store.meteo.torm||'').trim()) return '';
+  const cats=[{lbl:'Visibilidad',rk:'vis'},{lbl:'Vientos',rk:'vto'},{lbl:'Tormentas',rk:'torm'}];
+  let h='';
+  cats.forEach(cat=>{
+    const raw=store.meteo[cat.rk]||'';
+    const groups=parseMeteoText(raw);
+    h+='<div style="margin-bottom:12px"><div style="font-size:10.5px;font-weight:700;color:#7A8DB5;text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px">'+cat.lbl+'</div>';
+    if(groups.length){
+      groups.forEach(g=>{
+        if(!g) return;
+        const lines=Array.isArray(g.lines)?g.lines:[];
+        h+='<div style="margin-bottom:7px;border:1px solid #D0D8EC;border-radius:7px;overflow:hidden"><div style="background:#E8EFFE;padding:4px 10px;font-size:10.5px;font-weight:700;color:#0A2463">'+(g.flag||'')+' '+(g.pais||'')+'</div><div style="padding:6px 10px">';
+        lines.forEach(line=>{
+          if(!line) return;
+          const m=line.match(/^([A-Z]{4})/);
+          if(m) h+='<div style="font-size:11px;color:#3A4E7A;padding:2px 0;display:flex;gap:8px"><span style="font-family:monospace;font-weight:700;color:#0A2463;min-width:40px">'+esc(m[1])+'</span><span>'+esc(line.slice(4).replace(/^\s*[-/]\s*/,''))+'</span></div>';
+          else h+='<div style="font-size:11px;color:#3A4E7A;padding:2px 0">'+esc(line)+'</div>';
+        });
+        h+='</div></div>';
+      });
+    } else if(raw.trim()){
+      h+='<div style="font-size:11px;color:#3A4E7A;white-space:pre-wrap;padding:7px 10px;background:#F0F3FA;border-radius:7px">'+esc(raw)+'</div>';
+    } else {
+      h+='<span style="font-size:11px;color:#1A7F4B">Sin alertas</span>';
+    }
+    h+='</div>';
+  });
+  return h;
+}
+function buildPdfTurnos(){
+  if(store.roles.foto) return '<img src="'+store.roles.foto+'" style="max-width:100%;border-radius:8px;border:1px solid #D0D8EC">';
+  return '<p style="font-size:12px;color:#7A8DB5">Sin imagen de turnos cargada.</p>';
+}
+function buildPdfCCO(){
+  const cc=store.cco;const nd='<span style="font-size:11px;color:#7A8DB5">Sin datos</span>';
+  const sub=(l,c)=>'<div style="margin-bottom:10px"><div style="font-size:10px;font-weight:700;color:#7A8DB5;text-transform:uppercase;margin-bottom:5px">'+l+'</div>'+c+'</div>';
+  let h='';
+  h+=sub('Traslados',cc.trasladosRend?'<div style="overflow-x:auto">'+cc.trasladosRend+'</div>':nd);
+  h+=sub('Charters',cc.chartersRend?'<div style="overflow-x:auto">'+cc.chartersRend+'</div>':nd);
+  h+=sub('Interchange',cc.interchangeRend?'<div style="overflow-x:auto">'+cc.interchangeRend+'</div>':nd);
+  if(cc.cambioMat&&cc.cambioMat!=='N/A') h+=sub('Material','<div style="font-size:11px;color:#3A4E7A;white-space:pre-wrap">'+esc(cc.cambioMat)+'</div>');
+  if(cc.backups.length) h+=sub('Backups',cc.backups.map(b=>{const po=PAISES.find(x=>x.code===b.pais)||{flag:'',name:b.pais||''};const dp=b.diaCompleto?'Día completo':(b.hi||b.hf?b.hi+'–'+b.hf+' LT':'');return '<div style="font-size:11px;padding:3px 0;border-bottom:1px solid #EEF1F8;display:flex;gap:8px;align-items:center"><span style="font-family:monospace;font-weight:700;color:#0A2463">'+esc(b.mat||'?')+'</span><span style="color:#7A8DB5">'+po.flag+' '+po.name+'</span><span style="background:#DBEAFE;color:#1D4ED8;padding:1px 7px;border-radius:8px;font-size:9.5px;font-weight:600">'+esc(b.tipo||'')+'</span>'+(dp?'<span style="background:#E3F5EC;color:#1A7F4B;padding:1px 7px;border-radius:8px;font-size:9.5px;font-weight:600">'+esc(dp)+'</span>':'')+'</div>';}).join(''));
+  return h;
+}
+function buildPdfCPP(){
+  return '<div style="display:grid;grid-template-columns:1fr 1fr;gap:9px">'
+    +[{k:'jat',f:'🇨🇱',l:'JAT Chile'},{k:'jap',f:'🇵🇪',l:'JAP Perú'},{k:'jes',f:'🇦🇷',l:'JES Argentina'},{k:'jec',f:'🇨🇴',l:'JEC Colombia'}].map(b=>'<div style="border:1px solid #D0D8EC;border-radius:7px;overflow:hidden"><div style="background:#E8EFFE;padding:5px 10px;font-size:10.5px;font-weight:700;color:#0A2463">'+b.f+' '+b.l+'</div><div style="padding:8px 10px;font-size:11.5px;color:#3A4E7A;white-space:pre-wrap">'+esc(store.cpp[b.k]||'SIN PAX')+'</div></div>').join('')
+    +'</div>';
+}
+function buildPdfAptoNoImg(){
+  // Version without simFoto — added directly to PDF later
+  const a=store.apto;
+  return '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:9px">'
+    +'<div style="border-radius:7px;padding:9px;background:#F0F3FA;border:1px solid #D0D8EC"><div style="font-size:9px;color:#7A8DB5;font-weight:700;text-transform:uppercase;margin-bottom:3px">OVBK</div><div style="font-size:11.5px">'+esc(a.ovbk||'N/A')+'</div></div>'
+    +'<div style="border-radius:7px;padding:9px;background:#FEF3C7;border:1px solid #B45309"><div style="font-size:9px;color:#B45309;font-weight:700;text-transform:uppercase;margin-bottom:3px">Hotel LIMITADA</div><div style="font-size:11.5px;font-weight:600;color:#B45309">'+esc(a.hotelLim||'N/A')+'</div></div>'
+    +'<div style="border-radius:7px;padding:9px;background:#FEE2E2;border:1px solid #991B1B"><div style="font-size:9px;color:#991B1B;font-weight:700;text-transform:uppercase;margin-bottom:3px">Hotel CRITICA</div><div style="font-size:11.5px;font-weight:600;color:#991B1B">'+esc(a.hotelCrit||'N/A')+'</div></div>'
+    +'</div>'+(a.simFoto?'<p style="font-size:10px;color:#7A8DB5;margin-top:8px">Imagen de simultaneidad en página siguiente.</p>':'');
+}
+function buildPdfMantTextOnly(){
+  // Only show categories that have NO foto (text-only) — others go to dedicated pages
+  const m=store.mant; let h='';
+  const cats=[
+    {label:'Riesgos de Programación',tk:'riesgosText',fk:'riesgosFoto'},
+    {label:'Diferidos',tk:'diferidosText',fk:'diferidosFoto'},
+    {label:'Slots',tk:'slotsText',fk:'slotFoto'}
+  ];
+  cats.forEach(cat=>{
+    // Only show here if has text AND no foto (foto version goes to dedicated page)
+    if(m[cat.tk]&&m[cat.tk].trim()&&!m[cat.fk]){
+      h+='<div style="margin-bottom:10px"><div style="font-size:10px;color:#7A8DB5;font-weight:700;text-transform:uppercase;margin-bottom:5px">'+cat.label+'</div>';
+      h+='<div style="font-size:11.5px;color:#3A4E7A;white-space:pre-wrap;padding:8px 10px;background:#F0F3FA;border-radius:7px">'+esc(m[cat.tk])+'</div></div>';
+    }
+  });
+  return h; // empty string if nothing to show here
+}
+function buildPdfMantNoImg(){
+  return buildPdfMantTextOnly();
+}
+function buildPdfApto(){
+  const a=store.apto;
+  let h='<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:9px;margin-bottom:12px">'
+    +'<div style="border-radius:7px;padding:9px;background:#F0F3FA;border:1px solid #D0D8EC"><div style="font-size:9px;color:#7A8DB5;font-weight:700;text-transform:uppercase;margin-bottom:3px">OVBK</div><div style="font-size:11.5px">'+esc(a.ovbk||'N/A')+'</div></div>'
+    +'<div style="border-radius:7px;padding:9px;background:#FEF3C7;border:1px solid #B45309"><div style="font-size:9px;color:#B45309;font-weight:700;text-transform:uppercase;margin-bottom:3px">⚠️ Hotel LIMITADA</div><div style="font-size:11.5px;font-weight:600;color:#B45309">'+esc(a.hotelLim||'N/A')+'</div></div>'
+    +'<div style="border-radius:7px;padding:9px;background:#FEE2E2;border:1px solid #991B1B"><div style="font-size:9px;color:#991B1B;font-weight:700;text-transform:uppercase;margin-bottom:3px">🔴 Hotel CRÍTICA</div><div style="font-size:11.5px;font-weight:600;color:#991B1B">'+esc(a.hotelCrit||'N/A')+'</div></div>'
+    +'</div>';
+  if(a.simFoto) h+='<div style="font-size:9px;color:#7A8DB5;font-weight:700;text-transform:uppercase;margin-bottom:6px">🔢 Simultaneidad máxima</div><img src="'+a.simFoto+'" style="max-width:100%;border-radius:7px;border:1px solid #D0D8EC">';
+  else h+='<p style="font-size:11px;color:#7A8DB5">Sin imagen de simultaneidad.</p>';
+  return h;
+}
+function buildPdfMant(){
+  const m=store.mant;let h='';
+  const cats=[{ico:'⚠️',lbl:'Riesgos',tk:'riesgosText',fk:'riesgosFoto'},{ico:'📌',lbl:'Diferidos',tk:'diferidosText',fk:'diferidosFoto'},{ico:'🗓',lbl:'Slots',tk:'slotsText',fk:'slotFoto'}];
+  cats.forEach(cat=>{
+    if(!(m[cat.tk]&&m[cat.tk].trim())&&!m[cat.fk]) return;
+    h+='<div style="margin-bottom:12px"><div style="font-size:10px;color:#7A8DB5;font-weight:700;text-transform:uppercase;margin-bottom:6px">'+cat.lbl+'</div>';
+    if(m[cat.tk]&&m[cat.tk].trim()) h+='<div style="font-size:11.5px;color:#3A4E7A;white-space:pre-wrap;padding:8px 10px;background:#F0F3FA;border-radius:7px;margin-bottom:7px">'+esc(m[cat.tk])+'</div>';
+    if(m[cat.fk]) h+='<img src="'+m[cat.fk]+'" style="max-width:100%;border-radius:7px;border:1px solid #D0D8EC">';
+    h+='</div>';
+  });
+  return h||'<p style="font-size:12px;color:#7A8DB5">Sin datos registrados.</p>';
+}
+function exportInspeccionPDF(){
+  toast('Generando PDF...');
+  const ML={notam:'NOTAM',meteo:'Meteorología',roles:'Turnos',cco:'CCO',cpp:'CPP',apto:'Aeropuerto',mant:'Mantenimiento'};
+  const tmp=buildPDF(c=>{
+    [...actLog].reverse().forEach(ev=>{
+      const d=new Date(ev.ts);const row=document.createElement('div');
+      row.style.cssText='margin-bottom:9px;padding:8px 12px;border-left:3px solid #1B4FBF;background:#f0f3fa;border-radius:0 6px 6px 0';
+      row.innerHTML=`<div style="font-size:9px;color:#7A8DB5;font-family:monospace">${d.toLocaleDateString('es-CL')} · ${d.toLocaleTimeString('es-CL')}</div>
+        <div style="font-size:12px;font-weight:700;color:#0D1B3E">${ML[ev.module]||ev.module} · ${ev.area}${ev.user_name?' · '+ev.user_name:''}</div>
+        <div style="font-size:10.5px;color:#3A4E7A">${esc(ev.detail||'')}</div>`;
+      c.appendChild(row);
+    });
+    if(!actLog.length){const p=document.createElement('p');p.textContent='Sin actividad.';p.style.color='#7A8DB5';c.appendChild(p);}
+  },860);
+  toPDF(tmp,`JetSmart_Inspeccion_${document.getElementById('op-date').value}.pdf`);
+}
+function exportJSON(){
+  const blob=new Blob([JSON.stringify({fecha:document.getElementById('op-date').value,store,actLog},null,2)],{type:'application/json'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`JetSmart_OCC_${document.getElementById('op-date').value}.json`;a.click();
+  toast('⬇ JSON exportado');
+}
+
+// ════════════════════════════════════════════════════════
+// TOAST / DATE / INIT
+// ════════════════════════════════════════════════════════
+function toast(msg,type){
+  const t=document.getElementById('toast');t.textContent=msg;
+  t.style.background=type==='warn'?'var(--warn)':type==='ok'?'var(--ok)':'var(--jet)';
+  t.classList.add('show');clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('show'),3500);
+}
+function updateDateDisp(){
+  const v=document.getElementById('op-date').value;
+  if(!v)return;
+  const d=new Date(v+'T12:00:00');
+  document.getElementById('op-date-disp').textContent='+24H · '+d.toLocaleDateString('es-CL',{day:'2-digit',month:'2-digit',year:'numeric'});
+}
+document.getElementById('op-date').addEventListener('change',()=>{updateDateDisp();if(_sbClient) pullData();});
+
+// ─── STARTUP ───
+(function(){
+  // Set tomorrow's date (+24H)
+  const tmrw=new Date();tmrw.setDate(tmrw.getDate()+1);
+  const pad=n=>String(n).padStart(2,'0');
+  const tomorrow=`${tmrw.getFullYear()}-${pad(tmrw.getMonth()+1)}-${pad(tmrw.getDate())}`;
+  document.getElementById('op-date').value=tomorrow;
+  updateDateDisp();
+  // Load local fallback
+  try{const s=localStorage.getItem('js_occ_local');if(s)store=migrateStore(Object.assign(emptyStore(),JSON.parse(s)));}catch(e){}
+  // Restore persistent simFoto if not in store
+  try{const sf=localStorage.getItem('js_simFoto');if(sf&&!store.apto.simFoto) store.apto.simFoto=sf;}catch(e){}
+  // Pre-fill last user name/area from previous session
+  try{const lu=JSON.parse(localStorage.getItem('js_lastuser'));
+    if(lu){document.getElementById('login-name').value=lu.name||'';document.getElementById('login-area').value=lu.area||'';}
+  }catch(e){}
+  // Init Supabase immediately with hardcoded credentials
+  initSupabase();
+  // Show login screen
+  document.getElementById('overlay').style.display='flex';
+})();
+
+// ══════════════════════════════════════════
+// MOBILE HELPERS
+// ══════════════════════════════════════════
+function toggleSidebar(){
+  var sb=document.querySelector('sidebar');
+  var ov=document.getElementById('sidebar-overlay');
+  var isOpen=sb.classList.toggle('mob-open');
+  ov.classList.toggle('open',isOpen);
+}
+function closeSidebar(){
+  var sb=document.querySelector('sidebar');
+  if(sb) sb.classList.remove('mob-open');
+  var ov=document.getElementById('sidebar-overlay');
+  if(ov) ov.classList.remove('open');
+}
+function syncMobNav(mod){
+  document.querySelectorAll('.mob-nav-item').forEach(function(b){b.classList.remove('active');});
+  var mbn=document.getElementById('mbn-'+mod);
+  if(mbn) mbn.classList.add('active');
+}
+function mobNav(mod){
+  closeSidebar();
+  nav(mod, document.getElementById('nav-'+mod));
+}
+</script>
+
+<!-- MOBILE BOTTOM NAV -->
+<div class="mob-bottom-nav" id="mob-bottom-nav">
+  <div class="mob-nav-item active" id="mbn-notam" onclick="mobNav('notam')"><span>⚠️</span>NOTAM</div>
+  <div class="mob-nav-item" id="mbn-meteo" onclick="mobNav('meteo')"><span>🌤</span>Meteo</div>
+  <div class="mob-nav-item" id="mbn-roles" onclick="mobNav('roles')"><span>👤</span>Turnos</div>
+  <div class="mob-nav-item" id="mbn-cco" onclick="mobNav('cco')"><span>✈️</span>CCO</div>
+  <div class="mob-nav-item" id="mbn-cpp" onclick="mobNav('cpp')"><span>👥</span>CPP</div>
+  <div class="mob-nav-item" id="mbn-apto" onclick="mobNav('apto')"><span>🏢</span>Apto</div>
+  <div class="mob-nav-item" id="mbn-mant" onclick="mobNav('mant')"><span>🔧</span>Mant</div>
+  <div class="mob-nav-item" id="mbn-resumen" onclick="mobNav('resumen')"><span>📋</span>Resumen</div>
+  <div class="mob-nav-item" id="mbn-inspeccion" onclick="mobNav('inspeccion')"><span>🔍</span>Inspec.</div>
+</div>
+</body>
+</html>
